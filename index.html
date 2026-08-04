@@ -99,7 +99,28 @@
   .icrow .tl{color:var(--sub);font-size:13px}
   .note{background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;padding:10px 12px;
     font-size:12.5px;color:var(--navy);margin-bottom:16px}
+  .cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .cardhead h2{margin-bottom:0}
+  #printTitle{display:none}
   @media (max-width:600px){ .row>div{min-width:100%} }
+
+  /* ========== 印刷: 年間一覧の表だけを出す ========== */
+  @media print{
+    @page{size:A4 portrait;margin:12mm}
+    html,body{background:#fff}
+    header,#setupBanner,.tabs,#ovl,.noprint{display:none!important}
+    main{max-width:none;margin:0;padding:0}
+    #pageM{display:none!important}
+    #pageS{display:block!important}
+    #pageS>.card{display:none}          /* ほかのカードは印刷しない */
+    #pageS>#yearCard{display:block;border:none;border-radius:0;padding:0;margin:0}
+    #yearCard .cardhead{display:none}   /* 画面用の見出しは印刷用の題字に置き換える */
+    #printTitle{display:block;font-size:16px;font-weight:700;text-align:center;margin-bottom:10px}
+    .tblwrap{overflow:visible}
+    th,td{font-size:12px;padding:5px 6px;border-color:#8fa6bf}
+    th{background:var(--blue-soft)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    tr{page-break-inside:avoid}
+  }
 </style>
 </head>
 <body>
@@ -196,8 +217,12 @@
     <p class="muted" id="genNote" style="margin-top:6px"></p>
   </div>
 
-  <div class="card">
-    <h2>年間一覧（各月の曜日担当）</h2>
+  <div class="card" id="yearCard">
+    <div class="cardhead">
+      <h2>年間一覧（各月の曜日担当）</h2>
+      <button class="btn g sm noprint" onclick="window.print()">印刷 / PDF保存</button>
+    </div>
+    <div id="printTitle"></div>
     <div class="tblwrap">
     <table>
       <thead><tr><th>月</th><th>月曜</th><th>火曜</th><th>水曜</th><th>木曜</th><th>金曜</th></tr></thead>
@@ -627,6 +652,7 @@ function renderGenNote(){
 }
 
 function renderYear(){
+  document.getElementById('printTitle').textContent=`${curFy}年度 ピッチ当番表（年間一覧）`;
   const tb=document.getElementById('yearBody'); tb.innerHTML='';
   const s=data.schedules[curFy]||{};
   for(const {y,m} of fyMonths(curFy)){
