@@ -213,7 +213,7 @@
         <button class="btn d" onclick="clearSchedule()">この年度の割り当てをすべて削除</button>
       </div>
     </div>
-    <p class="muted">自動作成すると、この年度の既存の割り当て（手動調整を含む）はすべて作り直されます。1人あたり<b>週2回まで</b>とし、年度内の担当日数ができるだけ均等になるように、各曜日×各月に1人ずつ割り当てます。担当できる人がどうしてもいない週だけ週3回になることがあり、その場合は作成後にお知らせします。ほかの人の変更は自動で画面に反映されます。</p>
+    <p class="muted">自動作成すると、この年度の既存の割り当て（手動調整を含む）はすべて作り直されます。<b>2日連続で担当しない</b>・<b>1人あたり週2回まで</b>を守り、年度内の担当日数がそろうように（最多と最少の差が1日以内を目標に）割り当てます。担当できる人がどうしてもいない場合のみ例外が出ることがあり、その件数は作成後にお知らせします。ほかの人の変更は自動で画面に反映されます。</p>
     <p class="muted" id="genNote" style="margin-top:6px"></p>
   </div>
 
@@ -402,6 +402,12 @@ function weekKey(ds){
   dt.setDate(dt.getDate()-((dt.getDay()+6)%7));
   return k(dt.getFullYear(),dt.getMonth()+1,dt.getDate());
 }
+/* n日ずらした日付。前日・翌日を見て「2日連続」を判定するのに使います。 */
+function shiftDate(ds,n){
+  const dt=new Date(ds+'T00:00:00'); dt.setDate(dt.getDate()+n);
+  return k(dt.getFullYear(),dt.getMonth()+1,dt.getDate());
+}
+const wdayOf=ds=>new Date(ds+'T00:00:00').getDay();
 function onRotation(p,ds){ return (p.ics||[]).some(r=>inRange(ds,r.s,r.e))||inRange(ds,p.lab1,p.lab2); }
 function availOnDate(p,ds){ return !onRotation(p,ds); }
 const COLORS=['#1d6fd1','#0e8f76','#b5651d','#7b4bbf','#c04a72','#3a7ca5','#8a8f2a','#5b5f97','#c0392b','#2a9d8f'];
@@ -409,12 +415,15 @@ function pColor(id){ const i=data.people.findIndex(p=>p.id===id); return COLORS[
 function pName(id){ const p=data.people.find(x=>x.id===id); return p?p.name:'?'; }
 
 /* ================= 自動作成 =================
-   ルール
-   ・1人あたり週2回まで（どうしても人がいない週だけ週3回を許可し、件数を報告）
-   ・年度内の担当日数はできるだけ均等に
-   ・GEN_START に載っている年度は、その月より前を作成対象から外す（空欄のまま） */
+   ルール（守れない枠が出た場合は作成後に件数を報告します）
+   ・2日連続で担当しない（前日・翌日に当番が入らない）
+   ・1人あたり週2回まで
+   ・年度内の担当日数をできるだけ均等に（BALANCE_TOL 以内を目指す）
+   ・GEN_START に載っている年度は、その月より前を作成対象から外す（空欄のまま）
+   優先順位は 2日連続の回避 > 週2回の上限。人手が足りないときは週3回のほうを先に許容します。 */
 const GEN_START={2026:8};   // 2026年度は4〜7月が実施済みのため8月から作成する
 const WEEK_CAP=2;           // 1人あたりの週の担当回数の上限
+const BALANCE_TOL=1;        // 担当日数の「最多−最少」をここまで詰める
 const FY_MIN=2026;          // 年度の選択肢の下限（このアプリの運用開始年度）
 const FY_AHEAD=5;           // 今年度から何年度先まで選べるようにするか
 
@@ -433,18 +442,49 @@ function generate(){
   if(data.schedules[curFy] && Object.keys(data.schedules[curFy]).length>0){
     if(!confirm(`${curFy}年度の割り当てを作り直します。手動調整も消えます。${skipped}\nよろしいですか？`)) return;
   }
-  const sched={}; const load={}; members.forEach(p=>load[p.id]=0);
+  const sched={};
   const monthCnt={};
-  const weekCnt={};           // weekCnt[personId][週キー] = その週の担当回数
-  let over=0, blank=0;        // over:週3回になった枠  blank:担当者を置けなかった枠
+  // 各メンバーの担当状況。load=日数, weeks[週キー]=その週の回数, days=担当日の集合
+  const st={load:{},weeks:{},days:{}};
+  members.forEach(p=>{ st.load[p.id]=0; st.weeks[p.id]={}; st.days[p.id]=new Set(); });
+  let over=0, back2=0, blank=0;   // over:週3回 back2:2日連続 blank:担当者なし
 
-  const wcnt=(id,ds)=>(weekCnt[id]||{})[weekKey(ds)]||0;
-  const fits=(id,ds)=>wcnt(id,ds)<WEEK_CAP;
   function assign(id,ds){
-    sched[ds]=id; load[id]++;
-    const wk=weekKey(ds); const w=weekCnt[id]||(weekCnt[id]={});
-    if((w[wk]||0)>=WEEK_CAP)over++;
-    w[wk]=(w[wk]||0)+1;
+    const w=weekKey(ds);
+    if((st.weeks[id][w]||0)>=WEEK_CAP)over++;
+    if(st.days[id].has(shiftDate(ds,-1))||st.days[id].has(shiftDate(ds,1)))back2++;
+    sched[ds]=id; st.load[id]++;
+    st.weeks[id][w]=(st.weeks[id][w]||0)+1; st.days[id].add(ds);
+  }
+  /* p が dates を担当できるか。cap=週上限を守る, adj=2日連続を避ける */
+  function feasible(p,dates,cap,adj){
+    const wk={}, added=new Set();
+    for(const ds of dates){
+      if(!availOnDate(p,ds))return false;
+      if(cap){
+        const w=weekKey(ds);
+        if((st.weeks[p.id][w]||0)+(wk[w]||0)>=WEEK_CAP)return false;
+        wk[w]=(wk[w]||0)+1;
+      }
+      if(adj){
+        for(const n of [-1,1]){
+          const t=shiftDate(ds,n);
+          if(st.days[p.id].has(t)||added.has(t))return false;
+        }
+        added.add(ds);
+      }
+    }
+    return true;
+  }
+  /* 制約を守れる人を優先して1人選ぶ。守れる人がいなければ順に条件をゆるめる。 */
+  function pick(list,dates,score){
+    const tiers=[
+      list.filter(p=>feasible(p,dates,true,true)),    // 週2回まで＆2日連続なし
+      list.filter(p=>feasible(p,dates,false,true)),   // 2日連続なしを優先し週3回を許容
+      list,
+    ];
+    const use=tiers.find(t=>t.length>0);
+    return use&&use.slice().sort((a,b)=>score(a)-score(b))[0];
   }
 
   for(const {y,m} of months){
@@ -453,67 +493,118 @@ function generate(){
       const dates=slotDates(y,m,wd);
       if(dates.length===0)continue;
       const cands=members.filter(p=>!(p.gaikin||[]).includes(wd));
-      const score=p=>load[p.id]+(monthCnt[mk][p.id]||0)*0.3+Math.random()*0.01;
+      const score=p=>st.load[p.id]+(monthCnt[mk][p.id]||0)*0.3+Math.random()*0.01;
       const full=cands.filter(p=>dates.every(ds=>availOnDate(p,ds)));
-      // 週2回に収まる人を優先し、いなければやむを得ず週3回を許可する
-      const fullFit=full.filter(p=>dates.every(ds=>fits(p.id,ds)));
-      const use=fullFit.length?fullFit:full;
-      if(use.length>0){
-        use.sort((a,b)=>score(a)-score(b));
-        const p=use[0];
+      const p=full.length?pick(full,dates,score):null;
+      if(p){
         dates.forEach(ds=>assign(p.id,ds));
         monthCnt[mk][p.id]=(monthCnt[mk][p.id]||0)+1;
       }else{
+        // 月の途中でローテが始まる等で通しの担当を置けない場合は日ごとに分ける
         let i=0;
         while(i<dates.length){
-          const ds=dates[i];
-          const av=cands.filter(p=>availOnDate(p,ds));
-          if(av.length===0){ sched[ds]=''; blank++; i++; continue; }
-          const avFit=av.filter(p=>fits(p.id,ds));
-          const pool=avFit.length?avFit:av;
-          pool.sort((a,b)=>score(a)-score(b));
-          const p=pool[0]; let j=i;
-          while(j<dates.length && availOnDate(p,dates[j]) && fits(p.id,dates[j])){ assign(p.id,dates[j]); j++; }
-          if(j===i){ assign(p.id,dates[i]); j=i+1; }   // 週2回に収まらないが、この1日は埋める
-          monthCnt[mk][p.id]=(monthCnt[mk][p.id]||0)+1;
+          const av=cands.filter(q=>availOnDate(q,dates[i]));
+          if(av.length===0){ sched[dates[i]]=''; blank++; i++; continue; }
+          const q=pick(av,[dates[i]],score); let j=i;
+          while(j<dates.length && feasible(q,[dates[j]],true,true)){ assign(q.id,dates[j]); j++; }
+          if(j===i){ assign(q.id,dates[i]); j=i+1; }   // 制約は満たせないがこの1日は埋める
+          monthCnt[mk][q.id]=(monthCnt[mk][q.id]||0)+1;
           i=j;
         }
       }
     }
   }
-  // 担当日数の偏りをならす。週2回の上限を超える移動はしない。
-  for(let t=0;t<300;t++){
-    const ids=Object.keys(load); if(ids.length<2)break;
-    ids.sort((a,b)=>load[a]-load[b]);
-    const lo=ids[0],hi=ids[ids.length-1];
-    if(load[hi]-load[lo]<=5)break;
+
+  /* ---- 担当日数の偏りをならす ----
+     枠(同じ月・同じ曜日の連続したまとまり)を単位に、
+     「多い人→少ない人へ渡す」か「多い人と少ない人で交換する」を繰り返す。
+     ここでの移動は週2回・2日連続のルールを必ず守る。 */
+  const person=id=>data.people.find(p=>p.id===id);
+  function checkTake(p,dates,drop){                  // drop=その人が手放す日
+    const own=new Set(st.days[p.id]); (drop||[]).forEach(ds=>own.delete(ds));
+    const wk={}; own.forEach(ds=>{const w=weekKey(ds); wk[w]=(wk[w]||0)+1;});
+    for(const ds of dates){
+      if(!availOnDate(p,ds))return false;
+      if((p.gaikin||[]).includes(wdayOf(ds)))return false;
+      const w=weekKey(ds);
+      if((wk[w]||0)>=WEEK_CAP)return false;
+      wk[w]=(wk[w]||0)+1;
+      if(own.has(shiftDate(ds,-1))||own.has(shiftDate(ds,1)))return false;
+      own.add(ds);
+    }
+    return true;
+  }
+  function transfer(dates,from,to){
+    dates.forEach(ds=>{
+      const w=weekKey(ds);
+      st.weeks[from][w]--; st.days[from].delete(ds); st.load[from]--;
+      st.weeks[to][w]=(st.weeks[to][w]||0)+1; st.days[to].add(ds); st.load[to]++;
+      sched[ds]=to;
+    });
+  }
+  function blocks(){
+    const out=[];
+    for(const {y,m} of months)for(let wd=1;wd<=5;wd++){
+      const dates=slotDates(y,m,wd); let i=0;
+      while(i<dates.length){
+        const id=sched[dates[i]]; let j=i;
+        while(j<dates.length&&sched[dates[j]]===id)j++;
+        if(id)out.push({id,dates:dates.slice(i,j)});
+        i=j;
+      }
+    }
+    return out;
+  }
+  const ids=members.map(p=>p.id);
+  for(let t=0;t<400;t++){
+    const sorted=ids.slice().sort((a,b)=>st.load[a]-st.load[b]);
+    if(st.load[sorted[sorted.length-1]]-st.load[sorted[0]]<=BALANCE_TOL)break;
+    const bs=blocks();
     let done=false;
-    outer:
-    for(const {y,m} of months){
-      for(let wd=1;wd<=5;wd++){
-        const dates=slotDates(y,m,wd);
-        if(dates.length===0)continue;
-        const hp=data.people.find(p=>p.id===hi), lp=data.people.find(p=>p.id===lo);
+    pairs:
+    for(let h=sorted.length-1;h>0;h--){
+      for(let l=0;l<h;l++){
+        const hi=sorted[h], lo=sorted[l], diff=st.load[hi]-st.load[lo];
+        if(diff<=BALANCE_TOL)continue;
+        const hp=person(hi), lp=person(lo);
         if(!hp||!lp)continue;
-        if((lp.gaikin||[]).includes(wd))continue;
-        if(!dates.every(ds=>sched[ds]===hi))continue;
-        if(!dates.every(ds=>availOnDate(lp,ds)))continue;
-        if(!dates.every(ds=>fits(lo,ds)))continue;
-        dates.forEach(ds=>{
-          const wk=weekKey(ds);
-          weekCnt[hi][wk]--;
-          const w=weekCnt[lo]||(weekCnt[lo]={}); w[wk]=(w[wk]||0)+1;
-          sched[ds]=lo;
-        });
-        load[hi]-=dates.length; load[lo]+=dates.length; done=true; break outer;
+        // (1) 多い人の枠をそのまま渡す（差が縮む大きさのものだけ）
+        for(const b of bs){
+          if(b.id!==hi||b.dates.length>=diff)continue;
+          if(!checkTake(lp,b.dates,null))continue;
+          transfer(b.dates,hi,lo); done=true; break pairs;
+        }
+        // (2) 渡せない場合は、大きい枠と小さい枠を交換する
+        for(const a of bs){
+          if(a.id!==hi)continue;
+          for(const b of bs){
+            if(b.id!==lo)continue;
+            const gap=a.dates.length-b.dates.length;
+            if(gap<=0||gap>=diff)continue;
+            if(!checkTake(lp,a.dates,b.dates))continue;
+            if(!checkTake(hp,b.dates,a.dates))continue;
+            transfer(a.dates,hi,lo); transfer(b.dates,lo,hi); done=true; break pairs;
+          }
+        }
+        // (3) 枠のやりとりで詰められない分は、枠の最終日だけを1日渡す
+        //     （その月の途中で1回交代が増えるかわりに、日数がきっちりそろう）
+        const hb=bs.filter(b=>b.id===hi&&b.dates.length>=2)
+                   .sort((a,b)=>b.dates.length-a.dates.length);
+        for(const b of hb){
+          const ds=b.dates[b.dates.length-1];
+          if(!checkTake(lp,[ds],null))continue;
+          transfer([ds],hi,lo); done=true; break pairs;
+        }
       }
     }
     if(!done)break;
   }
+
   data.schedules[curFy]=sched;
   saveData(); renderSchedule();
 
   const msg=[];
+  if(back2>0)msg.push(`・担当できる人が足りず、2日連続になった枠が ${back2} 件あります。`);
   if(over>0)msg.push(`・担当できる人が足りず、週3回になった枠が ${over} 件あります。`);
   if(blank>0)msg.push(`・担当できる人がいないため、未割当（空欄）にした枠が ${blank} 件あります。`);
   if(msg.length)alert('自動作成しました。\n\n'+msg.join('\n')+'\n\n月表示から手動で調整できます。');
