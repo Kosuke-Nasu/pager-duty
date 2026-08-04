@@ -123,10 +123,10 @@
   .rules td{text-align:left}
   .rules th{white-space:nowrap}
   .rules .warn{background:var(--hol);border:1px solid #e5b5af;border-radius:8px;padding:11px 13px;margin-bottom:10px}
-  /* 年度の切り替えバー（当番表タブの先頭） */
-  .fybar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px}
-  .fybar>div{flex:0 0 auto}
-  .fybar p{margin:0;flex:1;min-width:180px}
+  /* 年度の切り替えバー（当番表タブの先頭）。ラベルと選択欄を横並びにして1行に収める。 */
+  .fybar{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;padding:9px 16px}
+  .fybar>div{flex:0 0 auto;display:flex;align-items:center;gap:10px}
+  .fybar label.f{margin-bottom:0;white-space:nowrap}
   .cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
   .cardhead h2{margin-bottom:0}
   #printTitle{display:none}
@@ -234,7 +234,6 @@
       <label class="f">年度（4月〜翌3月）</label>
       <select id="fySel" onchange="onFyChange()"></select>
     </div>
-    <p class="muted" id="genNote"></p>
   </div>
 
   <div class="card">
@@ -951,7 +950,7 @@ function defaultMonth(fy){
   return{y:f.y,m:f.m};
 }
 function onFyChange(){ curFy=+document.getElementById('fySel').value; curMonth=defaultMonth(curFy); renderSchedule(); }
-function renderSchedule(){ renderStartSel(); renderGenNote(); renderYear(); renderMonthBtns(); renderCal(); renderStats(); renderRoulette(); }
+function renderSchedule(){ renderStartSel(); renderYear(); renderMonthBtns(); renderCal(); renderStats(); renderRoulette(); }
 
 function renderStartSel(){
   const sel=document.getElementById('startSel'); sel.innerHTML='';
@@ -967,11 +966,6 @@ function onStartChange(){
   const m=+document.getElementById('startSel').value;
   (data.genStart||(data.genStart={}))[curFy]=m;
   saveData(); renderSchedule();
-}
-function renderGenNote(){
-  const sk=skippedLabel(curFy), from=fyStartMonth(curFy);
-  document.getElementById('genNote').innerHTML = sk
-    ? `※${curFy}年度は<b>${from}月から</b>作成します（${sk}は対象外・集計にも入りません）。` : '';
 }
 
 function renderYear(){
