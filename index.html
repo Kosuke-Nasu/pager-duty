@@ -101,6 +101,19 @@
   .icrow .tl{color:var(--sub);font-size:13px}
   .note{background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;padding:10px 12px;
     font-size:12.5px;color:var(--navy);margin-bottom:16px}
+  /* 代役ルーレット */
+  .rlp{display:flex;flex-wrap:wrap;gap:6px}
+  .rlp label{display:flex;align-items:center;gap:5px;background:var(--blue-soft);border:1px solid var(--blue-line);
+    border-radius:6px;padding:5px 9px;font-size:13.5px;cursor:pointer;user-select:none}
+  .rlp label.off{background:#f3f4f6;border-color:#e0e4e9;color:#9aa7b4}
+  .rlp label.ng{background:#f7f8fa;border-style:dashed;color:#aab4c0;cursor:not-allowed}
+  .rlp .why{font-size:11.5px;color:var(--danger)}
+  .rlp label.ng .why{color:#aab4c0}
+  #rlResult{margin-top:12px;min-height:52px;display:flex;align-items:center;justify-content:center;gap:6px;
+    background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;padding:12px;
+    font-size:21px;font-weight:700;color:var(--navy);text-align:center}
+  #rlResult.idle{font-size:13px;font-weight:400;color:var(--sub)}
+  #rlResult.spin{color:var(--sub)}
   /* ルールタブ */
   .rules h3{font-size:14.5px;color:var(--navy);margin:20px 0 7px;padding-left:9px;border-left:4px solid var(--blue-line)}
   .rules p{margin-bottom:9px}
@@ -252,6 +265,26 @@
   </div>
 
   <div class="card">
+    <h2>代役ルーレット（急な休みのとき）</h2>
+    <div class="row" style="margin-bottom:10px">
+      <div style="flex:0;min-width:170px">
+        <label class="f">代役を決める日</label>
+        <input type="date" id="rlDate" onchange="renderRoulette()">
+      </div>
+      <div style="flex:1;min-width:180px">
+        <label class="f">その日の担当</label>
+        <div id="rlOwner"></div>
+      </div>
+    </div>
+    <div id="rlCands"></div>
+    <div id="rlResult">日付を選んで「ルーレットを回す」を押してください</div>
+    <div class="row" style="margin-top:10px;margin-bottom:0">
+      <div style="flex:0"><button class="btn p" id="rlSpin" onclick="spinRoulette()">ルーレットを回す</button></div>
+      <div style="flex:0"><button class="btn g" id="rlApply" onclick="applyRoulette()" style="display:none">この人を担当にする</button></div>
+    </div>
+  </div>
+
+  <div class="card">
     <h2 id="statTitle">担当日数の集計</h2>
     <div class="tblwrap">
     <table>
@@ -339,7 +372,18 @@
       意図的に例外を作れる代わりに、ルールに反する組み方もできてしまうためご注意ください。
     </div>
 
-    <h3>9. 画面の見かた</h3>
+    <h3>9. 代役ルーレット</h3>
+    <p>急に担当者が休みになったとき、その日の代役をランダムに選ぶ機能です（当番表タブ）。</p>
+    <ul>
+      <li>次の人は<b>候補から自動的に外れます</b>…その日の担当者本人／その曜日が外勤日の人／ローテ期間中の人／当番対象でない人。</li>
+      <li>ほかにも都合の悪い人がいれば、候補のチェックを外して除外できます。</li>
+      <li>「週<span class="rCap2">2</span>回目」「前後の日も担当」に当たる人は<b>注記が出ますが候補には残ります</b>。
+          急な代役では選択肢を狭めすぎないほうがよいため、除外するかどうかは回す前に判断してください。</li>
+      <li>当たる確率は候補全員が同じです（担当日数による重みづけはしていません）。</li>
+      <li>「この人を担当にする」を押すと、その日の担当が置き換わって保存されます。押さなければ何も変わりません。</li>
+    </ul>
+
+    <h3>10. 画面の見かた</h3>
     <ul>
       <li><b>年間一覧の「→」</b>… その月の途中で担当が交代することを示します。</li>
       <li><b>未割当</b> … 担当できる人がいなかった日です。手動で埋めてください。</li>
@@ -347,7 +391,7 @@
       <li>年間一覧は「印刷 / PDF保存」ボタンからA4縦で印刷できます。</li>
     </ul>
 
-    <h3>10. データの取り扱い</h3>
+    <h3>11. データの取り扱い</h3>
     <div class="warn">
       このアプリのデータはFirebase（インターネット上のデータ保存サービス）に保存され、
       <b>このページのURLを知っている人は誰でも同じ内容を見て編集できます</b>。ログインはありません。<br>
@@ -875,7 +919,7 @@ function delPerson(id){
 
 /* ---- 当番表 ---- */
 function onFyChange(){ curFy=+document.getElementById('fySel').value; curMonth={y:curFy,m:4}; renderSchedule(); }
-function renderSchedule(){ renderStartSel(); renderGenNote(); renderYear(); renderMonthBtns(); renderCal(); renderStats(); }
+function renderSchedule(){ renderStartSel(); renderGenNote(); renderYear(); renderMonthBtns(); renderCal(); renderStats(); renderRoulette(); }
 
 function renderStartSel(){
   const sel=document.getElementById('startSel'); sel.innerHTML='';
@@ -968,6 +1012,99 @@ function renderStats(){
   });
 }
 
+/* ---- 代役ルーレット ----
+   急に担当者が休みになった日の代役を、条件を満たす人からランダムに選びます。 */
+const fyOf=ds=>{ const [y,m]=ds.split('-').map(Number); return m>=4?y:y-1; };
+const dutyOn=ds=>(data.schedules[fyOf(ds)]||{})[ds]||'';
+/* その日と同じ週に、その人がすでに担当している回数（その日自身は数えない） */
+function weekDuties(pid,ds){
+  const mon=weekKey(ds); let c=0;
+  for(let i=0;i<7;i++){ const d2=shiftDate(mon,i); if(d2!==ds&&dutyOn(d2)===pid)c++; }
+  return c;
+}
+let rlWinner=null;
+
+function renderRoulette(){
+  const ds=document.getElementById('rlDate').value;
+  const owner=document.getElementById('rlOwner'), box=document.getElementById('rlCands');
+  const res=document.getElementById('rlResult');
+  rlWinner=null;
+  document.getElementById('rlApply').style.display='none';
+  document.getElementById('rlSpin').textContent='ルーレットを回す';
+  res.className='idle'; res.textContent='「ルーレットを回す」を押してください';
+  box.innerHTML='';
+  if(!ds){ owner.innerHTML='<span class="muted">日付を選んでください</span>'; return; }
+  const [y,m,d]=ds.split('-').map(Number), wd=wdayOf(ds), hol=isHoliday(y,m,d);
+  if(wd===0||wd===6||hol){
+    owner.innerHTML=`<span class="muted">${m}/${d} は${hol||'土日'}のため当番がありません</span>`;
+    res.textContent='当番のある平日を選んでください';
+    return;
+  }
+  const cur=dutyOn(ds);
+  owner.innerHTML=cur
+    ? `<span class="dot" style="background:${pColor(cur)}"></span><b>${pName(cur)}</b>（${WD[wd]}曜）`
+    : `<span class="muted">未割当（${WD[wd]}曜）</span>`;
+
+  box.innerHTML='<label class="f">候補（チェックを外すと除外できます）</label>';
+  const list=document.createElement('div'); list.className='rlp';
+  let n=0;
+  data.people.filter(p=>p.active).forEach(p=>{
+    const ng=[], warn=[];
+    if(p.id===cur)ng.push('この日の担当');
+    if((p.gaikin||[]).includes(wd))ng.push('外勤日');
+    if(onRotation(p,ds))ng.push('ローテ中');
+    if(weekDuties(p.id,ds)>=WEEK_CAP)warn.push(`週${WEEK_CAP+1}回目`);
+    if(dutyOn(shiftDate(ds,-1))===p.id||dutyOn(shiftDate(ds,1))===p.id)warn.push('前後の日も担当');
+    const l=document.createElement('label');
+    const note=[...ng,...warn];
+    l.innerHTML=`<input type="checkbox" value="${p.id}" ${ng.length?'disabled':'checked'}>`
+      +`<span class="dot" style="background:${pColor(p.id)}"></span>${p.name}`
+      +(note.length?`<span class="why">（${note.join('・')}）</span>`:'');
+    if(ng.length)l.classList.add('ng');
+    else{
+      n++;
+      l.querySelector('input').addEventListener('change',e=>{
+        l.classList.toggle('off',!e.target.checked);
+      });
+    }
+    list.appendChild(l);
+  });
+  box.appendChild(list);
+  if(n===0)res.textContent='この日に代われる人がいません（外勤日・ローテ期間をご確認ください）';
+}
+
+function spinRoulette(){
+  const ids=[...document.querySelectorAll('#rlCands input:checked')].map(i=>i.value);
+  if(ids.length===0){ alert('候補が1人もいません。除外のチェックを見直してください。'); return; }
+  const res=document.getElementById('rlResult'), btn=document.getElementById('rlSpin');
+  btn.disabled=true;
+  document.getElementById('rlApply').style.display='none';
+  res.className='spin';
+  const show=id=>res.innerHTML=`<span class="dot" style="background:${pColor(id)}"></span>${pName(id)}`;
+  let t=0, delay=60;
+  const tick=()=>{
+    show(ids[Math.floor(Math.random()*ids.length)]);
+    t+=delay; delay*=1.13;
+    if(t<1800){ setTimeout(tick,delay); return; }
+    rlWinner=ids[Math.floor(Math.random()*ids.length)];
+    res.className=''; show(rlWinner);
+    btn.disabled=false; btn.textContent='もう一度回す';
+    document.getElementById('rlApply').style.display='';
+  };
+  tick();
+}
+
+function applyRoulette(){
+  const ds=document.getElementById('rlDate').value;
+  if(!ds||!rlWinner)return;
+  const fy=fyOf(ds), cur=dutyOn(ds);
+  if(!confirm(`${ds.replaceAll('-','/')} の担当を`
+    +`${cur?`「${pName(cur)}」から`:''}「${pName(rlWinner)}」に変更します。\nよろしいですか？`))return;
+  (data.schedules[fy]||(data.schedules[fy]={}))[ds]=rlWinner;
+  saveData();
+  if(fy===curFy)renderSchedule(); else renderRoulette();
+}
+
 /* ---- 手動調整 ---- */
 function optionHtml(sel,ds,wd){
   let h=`<option value="">（空欄）</option>`;
@@ -1010,7 +1147,8 @@ function closeModal(){ document.getElementById('ovl').classList.remove('show'); 
 /* ================= 初期化 ================= */
 function renderAll(){ renderPeople(); renderSchedule(); renderRules(); }
 Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleActive,addIcRow,
-  onFyChange,onStartChange,generate,clearSchedule,openModal,bulkApply,saveModal,closeModal,reloadNoop:()=>{}});
+  onFyChange,onStartChange,generate,clearSchedule,openModal,bulkApply,saveModal,closeModal,
+  renderRoulette,spinRoulette,applyRoulette,reloadNoop:()=>{}});
 
 (async function init(){
   const g=document.getElementById('pGaikin');
@@ -1029,6 +1167,7 @@ Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleA
     if(fy===cur)o.selected=true; sel.appendChild(o);
   }
   curFy=cur; curMonth={y:cur,m:4};
+  document.getElementById('rlDate').value=k(now.getFullYear(),now.getMonth()+1,now.getDate());
   migrate(data);
   await initStore();
   renderAll();
