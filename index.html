@@ -415,6 +415,8 @@ function pName(id){ const p=data.people.find(x=>x.id===id); return p?p.name:'?';
    ・GEN_START に載っている年度は、その月より前を作成対象から外す（空欄のまま） */
 const GEN_START={2026:8};   // 2026年度は4〜7月が実施済みのため8月から作成する
 const WEEK_CAP=2;           // 1人あたりの週の担当回数の上限
+const FY_MIN=2026;          // 年度の選択肢の下限（このアプリの運用開始年度）
+const FY_AHEAD=5;           // 今年度から何年度先まで選べるようにするか
 
 /* この年度で自動作成の対象にする月 */
 function genMonths(fy){
@@ -771,12 +773,13 @@ Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleA
   });
   setIcRows([]);
   const now=new Date(); const thisFy=now.getMonth()+1>=4?now.getFullYear():now.getFullYear()-1;
+  const cur=Math.max(thisFy,FY_MIN);
   const sel=document.getElementById('fySel');
-  for(let fy=thisFy-1;fy<=thisFy+3;fy++){
+  for(let fy=FY_MIN;fy<=cur+FY_AHEAD;fy++){
     const o=document.createElement('option'); o.value=fy; o.textContent=`${fy}年度`;
-    if(fy===thisFy)o.selected=true; sel.appendChild(o);
+    if(fy===cur)o.selected=true; sel.appendChild(o);
   }
-  curFy=thisFy; curMonth={y:thisFy,m:4};
+  curFy=cur; curMonth={y:cur,m:4};
   await initStore();
   renderAll();
   // ホーム画面インストールを可能にするための下準備(サービスワーカー登録)
