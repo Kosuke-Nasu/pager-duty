@@ -45,8 +45,10 @@
   .card h2{font-size:15px;color:var(--navy);margin-bottom:10px;padding-left:10px;border-left:4px solid var(--blue)}
   label.f{display:block;font-size:12.5px;color:var(--sub);margin-bottom:3px}
   input[type=text],input[type=date],select{
-    border:1px solid var(--blue-line);border-radius:6px;padding:7px 9px;font-size:14px;background:#fff;color:var(--ink)}
+    border:1px solid var(--blue-line);border-radius:6px;padding:7px 9px;font-size:14px;background:#fff;color:var(--ink);
+    max-width:100%}
   input[type=text]{width:100%}
+  .row select{width:100%}   /* 選択肢の文字数で枠からはみ出さないようにする */
   .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
   .row>div{min-width:150px;flex:1}
   .wk{display:flex;gap:6px;flex-wrap:wrap}
@@ -878,9 +880,9 @@ function renderSchedule(){ renderStartSel(); renderGenNote(); renderYear(); rend
 function renderStartSel(){
   const sel=document.getElementById('startSel'); sel.innerHTML='';
   const from=fyStartMonth(curFy);
-  fyMonths(curFy).forEach(({y,m},i)=>{
+  fyMonths(curFy).forEach(({y,m})=>{
     const o=document.createElement('option');
-    o.value=m; o.textContent=`${y}年${m}月`+(i===0?'（年度のはじめ）':'');
+    o.value=m; o.textContent=`${y}年${m}月`;
     if(m===from)o.selected=true;
     sel.appendChild(o);
   });
