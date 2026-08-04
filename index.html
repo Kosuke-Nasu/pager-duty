@@ -99,6 +99,15 @@
   .icrow .tl{color:var(--sub);font-size:13px}
   .note{background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;padding:10px 12px;
     font-size:12.5px;color:var(--navy);margin-bottom:16px}
+  /* ルールタブ */
+  .rules h3{font-size:14.5px;color:var(--navy);margin:20px 0 7px;padding-left:9px;border-left:4px solid var(--blue-line)}
+  .rules p{margin-bottom:9px}
+  .rules ul,.rules ol{margin:0 0 10px 22px}
+  .rules li{margin-bottom:5px}
+  .rules table{margin-bottom:10px}
+  .rules td{text-align:left}
+  .rules th{white-space:nowrap}
+  .rules .warn{background:var(--hol);border:1px solid #e5b5af;border-radius:8px;padding:11px 13px;margin-bottom:10px}
   .cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
   .cardhead h2{margin-bottom:0}
   #printTitle{display:none}
@@ -110,7 +119,7 @@
     html,body{background:#fff}
     header,#setupBanner,.tabs,#ovl,.noprint{display:none!important}
     main{max-width:none;margin:0;padding:0}
-    #pageM{display:none!important}
+    #pageM,#pageR{display:none!important}
     #pageS{display:block!important}
     #pageS>.card{display:none}          /* ほかのカードは印刷しない */
     #pageS>#yearCard{display:block;border:none;border-radius:0;padding:0;margin:0}
@@ -136,14 +145,15 @@
 <div class="tabs">
   <button id="tabM" class="on" onclick="showTab('m')">メンバー登録</button>
   <button id="tabS" onclick="showTab('s')">当番表</button>
+  <button id="tabR" onclick="showTab('r')">ルール</button>
 </div>
 
 <!-- ============ メンバー ============ -->
 <main id="pageM">
   <div class="note">
-    このアプリのデータはFirebase（インターネット上のデータ保存サービス）に保存され、
-    <b>このページのURLを知っている人全員が同じ内容を見て編集できます</b>。
-    氏名と当番以外の情報（患者情報など）は入力しないでください。
+    <b>氏名と当番以外の情報（患者情報など）は入力しないでください。</b>
+    入力内容はこのページのURLを知っている人全員が見られます。
+    <a href="#" onclick="showTab('r');return false">→ 詳しくはルールタブ</a>
   </div>
 
   <div class="card">
@@ -195,7 +205,6 @@
       <tbody id="pBody"></tbody>
     </table>
     </div>
-    <p class="muted" style="margin-top:8px">※ローテ期間中の日は自動作成時に当番へ組み入れられません。月の途中までローテの場合は、その月の空いている週から担当に入ります。</p>
   </div>
 </main>
 
@@ -217,8 +226,7 @@
         <button class="btn d" onclick="clearSchedule()">この年度の割り当てをすべて削除</button>
       </div>
     </div>
-    <p class="muted">自動作成すると、この年度の既存の割り当て（手動調整を含む）はすべて作り直されます。<b>2日連続で担当しない</b>・<b>1人あたり週2回まで</b>を守り、年度内の担当日数がそろうように（最多と最少の差が1日以内を目標に）割り当てます。担当できる人がどうしてもいない場合のみ例外が出ることがあり、その件数は作成後にお知らせします。ほかの人の変更は自動で画面に反映されます。</p>
-    <p class="muted" id="genNote" style="margin-top:6px"></p>
+    <p class="muted" id="genNote"></p>
   </div>
 
   <div class="card" id="yearCard">
@@ -233,7 +241,6 @@
       <tbody id="yearBody"></tbody>
     </table>
     </div>
-    <p class="muted" style="margin-top:8px">「→」は月の途中で担当が交代することを示します（ローテ期間との重なり、または手動調整によるもの）。</p>
   </div>
 
   <div class="card">
@@ -250,6 +257,101 @@
       <tbody id="statBody"></tbody>
     </table>
     </div>
+  </div>
+</main>
+
+<!-- ============ ルール ============ -->
+<main id="pageR" style="display:none">
+  <div class="card rules">
+    <h2>当番表の作りかた（ルール）</h2>
+
+    <h3>1. 当番を置く日</h3>
+    <ul>
+      <li>平日（月曜〜金曜）のみです。土曜・日曜には当番を置きません。</li>
+      <li>祝日には当番を置きません。振替休日と国民の休日も自動で除きます。</li>
+      <li>割り当ての単位は「その月のその曜日」です。原則として、同じ月の同じ曜日は同じ人が通しで担当します。</li>
+    </ul>
+
+    <h3>2. 必ず守るルール</h3>
+    <p>担当できる人が足りない場合でも、次の4つを破ることはありません。</p>
+    <div class="tblwrap">
+      <table>
+        <tr><th>外勤日</th><td>登録した曜日には当番を入れません。</td></tr>
+        <tr><th>感染制御部ローテ</th><td>登録したすべての期間中は当番を入れません。</td></tr>
+        <tr><th>細菌検査室ローテ</th><td>登録した期間中は当番を入れません。</td></tr>
+        <tr><th>当番対象</th><td>メンバー一覧でチェックの無い人には割り当てません。</td></tr>
+      </table>
+    </div>
+    <p>条件を満たす人が1人もいない日は<b>未割当（空欄）</b>にして、作成後にその件数をお知らせします。</p>
+    <p>月の途中でローテが始まる・終わる場合は、その月の途中で担当が交代します。</p>
+
+    <h3>3. できる限り守るルール</h3>
+    <div class="tblwrap">
+      <table>
+        <tr><th style="width:70px">優先</th><th>ルール</th></tr>
+        <tr><td>高</td><td>2日連続で担当しない（前日・翌日に当番を入れない）</td></tr>
+        <tr><td>低</td><td>1人あたり<b>週<span id="rCap">2</span>回まで</b>（週は月曜〜日曜で数えます）</td></tr>
+      </table>
+    </div>
+    <p>人数が足りないときは、先に「週<span class="rCap2">2</span>回まで」のほうを崩します。
+       たとえば3人しかいない場合は「月・水・金」のように週3回にしてでも、2日連続は避けます。</p>
+    <p>土日祝を挟む場合は連続にあたりません（金曜と翌月曜、祝日を挟んだ月曜と水曜など）。
+       どうしても守れなかった枠は、作成後に件数をお知らせします。</p>
+
+    <h3>4. 担当者の決めかた</h3>
+    <ul>
+      <li>その年度の担当日数が少ない人を優先します。</li>
+      <li>同じ月に担当が偏らないように分散します。</li>
+      <li>そのうえで同じ条件なら、ランダムに決めます。</li>
+    </ul>
+
+    <h3>5. 担当日数の均等化</h3>
+    <p>ひととおり組んだあと、最多と最少の差が<b><span id="rTol">1</span>日以内</b>になるまで調整します。
+       調整は次の順で行い、いずれも上の2・3のルールを満たす範囲でしか動かしません。</p>
+    <ol>
+      <li>多い人の枠を、そのまま少ない人へ渡す。</li>
+      <li>渡せない場合は、多い人と少ない人で枠を交換する。</li>
+      <li>それでも差が残る分だけ、枠の最終日を1日だけ渡す（この場合のみ、その月の途中で交代が1回増えます）。</li>
+    </ol>
+
+    <h3>6. 年度と「作成を始める月」</h3>
+    <ul>
+      <li>年度は4月から翌年3月までです。</li>
+      <li>年度の途中から使い始めた場合は、当番表タブの<b>「作成を始める月」</b>を変えてください。
+          その月より前は自動作成の対象外（空欄のまま）になり、<b>担当日数の集計にも数えません</b>。</li>
+      <li>この設定は年度ごとに保存され、全員の画面で共通です。</li>
+    </ul>
+    <p>現在の設定：<span id="rStart"></span></p>
+
+    <h3>7. 自動作成と削除</h3>
+    <ul>
+      <li><b>「この年度を自動作成」</b>を押すと、その年度の割り当ては<b>手動調整も含めてすべて作り直されます</b>。ほかの年度には影響しません。</li>
+      <li><b>「この年度の割り当てをすべて削除」</b>を押すと、その年度だけが空になります。メンバー登録とほかの年度は残ります。</li>
+      <li>どちらも元に戻せません。</li>
+    </ul>
+
+    <h3>8. 手動調整</h3>
+    <div class="warn">
+      月表示で日付をタップして行う手動調整には、<b>上のルールは適用されません</b>。
+      外勤日・ローテ期間中の人も含めて誰でも選べます（選択肢に「外勤日」「ローテ中」の注記は出ます）。
+      意図的に例外を作れる代わりに、ルールに反する組み方もできてしまうためご注意ください。
+    </div>
+
+    <h3>9. 画面の見かた</h3>
+    <ul>
+      <li><b>年間一覧の「→」</b>… その月の途中で担当が交代することを示します。</li>
+      <li><b>未割当</b> … 担当できる人がいなかった日です。手動で埋めてください。</li>
+      <li><b>ローテ期間中! / 外勤日!</b> … 手動調整などでルールに反した割り当てになっている日に出る警告です。</li>
+      <li>年間一覧は「印刷 / PDF保存」ボタンからA4縦で印刷できます。</li>
+    </ul>
+
+    <h3>10. データの取り扱い</h3>
+    <div class="warn">
+      このアプリのデータはFirebase（インターネット上のデータ保存サービス）に保存され、
+      <b>このページのURLを知っている人は誰でも同じ内容を見て編集できます</b>。ログインはありません。<br>
+      <b>氏名と当番以外の情報（患者情報など）は入力しないでください。</b>
+    </div>
+    <p>変更は自動で保存され、ほかの人の画面にもすぐ反映されます（画面右上に保存の状況が出ます）。</p>
   </div>
 </main>
 
@@ -644,12 +746,27 @@ function clearSchedule(){
 }
 
 /* ================= 表示 ================= */
+const TABS=[['m','pageM','tabM'],['s','pageS','tabS'],['r','pageR','tabR']];
 function showTab(t){
-  document.getElementById('pageM').style.display=t==='m'?'':'none';
-  document.getElementById('pageS').style.display=t==='s'?'':'none';
-  document.getElementById('tabM').classList.toggle('on',t==='m');
-  document.getElementById('tabS').classList.toggle('on',t==='s');
+  TABS.forEach(([key,page,tab])=>{
+    document.getElementById(page).style.display=(t===key)?'':'none';
+    document.getElementById(tab).classList.toggle('on',t===key);
+  });
   if(t==='s')renderSchedule();
+  if(t==='r')renderRules();
+  window.scrollTo({top:0});
+}
+
+/* ルールタブの、設定値によって変わる部分を埋める */
+function renderRules(){
+  document.getElementById('rCap').textContent=WEEK_CAP;
+  document.querySelectorAll('.rCap2').forEach(e=>e.textContent=WEEK_CAP);
+  document.getElementById('rTol').textContent=BALANCE_TOL;
+  const gs=data.genStart||{};
+  const lines=Object.keys(gs).map(Number).filter(fy=>gs[fy]&&gs[fy]!==4).sort()
+    .map(fy=>`${fy}年度は${gs[fy]}月から`);
+  document.getElementById('rStart').textContent=
+    lines.length?lines.join('、')+'（ほかの年度は4月から）':'すべての年度で4月から';
 }
 function gaikinLabel(g){ return (g&&g.length)?g.map(w=>WD[w]).join('・'):'なし'; }
 function rangeLabel(a,b){ return (a&&b)?`${a.replaceAll('-','/')} 〜 ${b.replaceAll('-','/')}`:'—'; }
@@ -776,9 +893,7 @@ function onStartChange(){
 function renderGenNote(){
   const sk=skippedLabel(curFy), from=fyStartMonth(curFy);
   document.getElementById('genNote').innerHTML = sk
-    ? `※${curFy}年度は<b>${from}月から</b>作成します。${sk}は対象外で、自動作成しても空欄のままです`
-      +`（担当日数の集計も${from}月以降が対象になります）。年度の途中から使い始めた場合などに設定してください。`
-    : '';
+    ? `※${curFy}年度は<b>${from}月から</b>作成します（${sk}は対象外・集計にも入りません）。` : '';
 }
 
 function renderYear(){
@@ -891,7 +1006,7 @@ function saveModal(){
 function closeModal(){ document.getElementById('ovl').classList.remove('show'); modalCtx=null; }
 
 /* ================= 初期化 ================= */
-function renderAll(){ renderPeople(); renderSchedule(); }
+function renderAll(){ renderPeople(); renderSchedule(); renderRules(); }
 Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleActive,addIcRow,
   onFyChange,onStartChange,generate,clearSchedule,openModal,bulkApply,saveModal,closeModal,reloadNoop:()=>{}});
 
