@@ -265,22 +265,33 @@
   </div>
 
   <div class="card">
-    <h2>代役ルーレット（急な休みのとき）</h2>
-    <div class="row" style="margin-bottom:10px">
-      <div style="flex:0;min-width:170px">
-        <label class="f">代役を決める日</label>
-        <input type="date" id="rlDate" onchange="renderRoulette()">
+    <h2>代役ルーレット（急な休み・長期の不在）</h2>
+    <div class="row" style="margin-bottom:8px">
+      <div style="flex:0;min-width:150px">
+        <label class="f">開始日</label>
+        <input type="date" id="rlFrom" onchange="renderRoulette()">
       </div>
-      <div style="flex:1;min-width:180px">
-        <label class="f">その日の担当</label>
-        <div id="rlOwner"></div>
+      <div style="flex:0;min-width:180px">
+        <label class="f">終了日（1日だけなら空欄）</label>
+        <input type="date" id="rlTo" onchange="renderRoulette()">
+      </div>
+      <div style="flex:0;min-width:180px">
+        <label class="f">休む人</label>
+        <select id="rlWho" onchange="renderRoulette()"></select>
       </div>
     </div>
+    <div id="rlInfo"></div>
     <div id="rlCands"></div>
-    <div id="rlResult">日付を選んで「ルーレットを回す」を押してください</div>
+    <div id="rlResult" class="idle">条件を決めて「ルーレットを回す」を押してください</div>
+    <div class="tblwrap" id="rlTableWrap" style="display:none;margin-top:10px">
+      <table>
+        <thead><tr><th>日付</th><th>もとの担当</th><th>代役</th></tr></thead>
+        <tbody id="rlBody"></tbody>
+      </table>
+    </div>
     <div class="row" style="margin-top:10px;margin-bottom:0">
       <div style="flex:0"><button class="btn p" id="rlSpin" onclick="spinRoulette()">ルーレットを回す</button></div>
-      <div style="flex:0"><button class="btn g" id="rlApply" onclick="applyRoulette()" style="display:none">この人を担当にする</button></div>
+      <div style="flex:0"><button class="btn g" id="rlApply" onclick="applyRoulette()" style="display:none">この結果を反映する</button></div>
     </div>
   </div>
 
@@ -373,14 +384,20 @@
     </div>
 
     <h3>9. 代役ルーレット</h3>
-    <p>急に担当者が休みになったとき、その日の代役をランダムに選ぶ機能です（当番表タブ）。</p>
+    <p>担当者が休むときの代役をランダムに選ぶ機能です（当番表タブ）。1日だけでも、夏休みのような期間でも使えます。</p>
     <ul>
-      <li>次の人は<b>候補から自動的に外れます</b>…その日の担当者本人／その曜日が外勤日の人／ローテ期間中の人／当番対象でない人。</li>
+      <li><b>1日だけ</b>のときは開始日だけを入れ、終了日は空欄のままにします。
+          <b>期間</b>のときは開始日と終了日の両方を入れます。</li>
+      <li><b>「休む人」</b>を選ぶと、その期間のうち<b>その人の担当日だけ</b>が対象になります。
+          指定しなければ、期間内のすべての当番日が対象です。</li>
+      <li>土日・祝日は自動的に対象から外れます。対象になる日は入力欄の下に一覧で出ます。</li>
+      <li>抽選は<b>1日ずつ別々に</b>行います。期間が長ければ、日によって別の人が当たります。</li>
+      <li>次の人はその日の候補から<b>自動的に外れます</b>…その日の担当者本人／その曜日が外勤日の人／ローテ期間中の人／当番対象でない人。</li>
       <li>ほかにも都合の悪い人がいれば、候補のチェックを外して除外できます。</li>
-      <li>「週<span class="rCap2">2</span>回目」「前後の日も担当」に当たる人は<b>注記が出ますが候補には残ります</b>。
-          急な代役では選択肢を狭めすぎないほうがよいため、除外するかどうかは回す前に判断してください。</li>
-      <li>当たる確率は候補全員が同じです（担当日数による重みづけはしていません）。</li>
-      <li>「この人を担当にする」を押すと、その日の担当が置き換わって保存されます。押さなければ何も変わりません。</li>
+      <li>「週<span class="rCap2">2</span>回まで」「2日連続で担当しない」を<b>満たす人がいれば、その中から選びます</b>。
+          満たす人がいない場合は、ルールに反する人からも選び、結果の表に注記を出します。</li>
+      <li>その日に代われる人が誰もいなければ「該当者なし」と表示し、その日は変更しません。</li>
+      <li><b>「この結果を反映する」</b>を押して初めて当番表が書き換わります。押さなければ何も変わりません。</li>
     </ul>
 
     <h3>10. 画面の見かた</h3>
@@ -1013,96 +1030,159 @@ function renderStats(){
 }
 
 /* ---- 代役ルーレット ----
-   急に担当者が休みになった日の代役を、条件を満たす人からランダムに選びます。 */
+   1日だけでも、夏休みのような期間でも、代役をランダムに決められます。 */
 const fyOf=ds=>{ const [y,m]=ds.split('-').map(Number); return m>=4?y:y-1; };
 const dutyOn=ds=>(data.schedules[fyOf(ds)]||{})[ds]||'';
-/* その日と同じ週に、その人がすでに担当している回数（その日自身は数えない） */
-function weekDuties(pid,ds){
-  const mon=weekKey(ds); let c=0;
-  for(let i=0;i<7;i++){ const d2=shiftDate(mon,i); if(d2!==ds&&dutyOn(d2)===pid)c++; }
-  return c;
+const isDutyDay=ds=>{
+  const [y,m,d]=ds.split('-').map(Number), wd=wdayOf(ds);
+  return wd!==0&&wd!==6&&!isHoliday(y,m,d);
+};
+const dsLabel=ds=>{ const [,m,d]=ds.split('-').map(Number); return `${m}/${d}（${WD[wdayOf(ds)]}）`; };
+let rlResult=null;   // [{ds,cur,to}]
+
+/* 対象になる当番日を求める。休む人を指定した場合はその人の担当日だけ。 */
+function rlTargets(){
+  const a=document.getElementById('rlFrom').value;
+  const b=document.getElementById('rlTo').value||a;
+  const who=document.getElementById('rlWho').value;
+  if(!a)return{err:'開始日を選んでください。'};
+  if(b<a)return{err:'終了日は開始日と同じか、あとの日にしてください。'};
+  const days=[];
+  for(let ds=a; ds<=b && days.length<400; ds=shiftDate(ds,1)){
+    if(!isDutyDay(ds))continue;
+    const cur=dutyOn(ds);
+    if(who&&cur!==who)continue;
+    days.push({ds,cur});
+  }
+  if(days.length===0)
+    return{err:who?'この期間に、その人の当番日はありません。':'この期間に当番のある平日がありません。'};
+  return{days,who};
 }
-let rlWinner=null;
+/* その日にその人を置けるか（必ず守るルール） */
+function rlEligible(p,ds,cur){
+  return p.id!==cur && !(p.gaikin||[]).includes(wdayOf(ds)) && !onRotation(p,ds);
+}
+/* できる限り守りたいルールに反していないか。taken=抽選中の仮の割り当て */
+function rlWarn(p,ds,taken){
+  const at=d2=>(d2 in taken)?taken[d2]:dutyOn(d2);
+  const w=[], mon=weekKey(ds); let c=0;
+  for(let i=0;i<7;i++){ const d2=shiftDate(mon,i); if(d2!==ds&&at(d2)===p.id)c++; }
+  if(c>=WEEK_CAP)w.push(`週${c+1}回目`);
+  if(at(shiftDate(ds,-1))===p.id||at(shiftDate(ds,1))===p.id)w.push('前後の日も担当');
+  return w;
+}
 
 function renderRoulette(){
-  const ds=document.getElementById('rlDate').value;
-  const owner=document.getElementById('rlOwner'), box=document.getElementById('rlCands');
+  const info=document.getElementById('rlInfo'), box=document.getElementById('rlCands');
   const res=document.getElementById('rlResult');
-  rlWinner=null;
+  rlResult=null;
   document.getElementById('rlApply').style.display='none';
   document.getElementById('rlSpin').textContent='ルーレットを回す';
-  res.className='idle'; res.textContent='「ルーレットを回す」を押してください';
+  document.getElementById('rlTableWrap').style.display='none';
+  res.className='idle'; res.textContent='条件を決めて「ルーレットを回す」を押してください';
   box.innerHTML='';
-  if(!ds){ owner.innerHTML='<span class="muted">日付を選んでください</span>'; return; }
-  const [y,m,d]=ds.split('-').map(Number), wd=wdayOf(ds), hol=isHoliday(y,m,d);
-  if(wd===0||wd===6||hol){
-    owner.innerHTML=`<span class="muted">${m}/${d} は${hol||'土日'}のため当番がありません</span>`;
-    res.textContent='当番のある平日を選んでください';
-    return;
-  }
-  const cur=dutyOn(ds);
-  owner.innerHTML=cur
-    ? `<span class="dot" style="background:${pColor(cur)}"></span><b>${pName(cur)}</b>（${WD[wd]}曜）`
-    : `<span class="muted">未割当（${WD[wd]}曜）</span>`;
 
-  box.innerHTML='<label class="f">候補（チェックを外すと除外できます）</label>';
+  // 「休む人」の選択肢（選択中の人は保つ）
+  const who=document.getElementById('rlWho');
+  const keep=who.value;
+  who.innerHTML='<option value="">指定しない（期間内のすべての当番日）</option>'
+    +data.people.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  if([...who.options].some(o=>o.value===keep))who.value=keep;
+
+  const t=rlTargets();
+  if(t.err){ info.innerHTML=`<span class="muted">${t.err}</span>`; return; }
+  info.innerHTML=`<span class="muted">対象：<b>${t.days.length}日</b>`
+    +`（${t.days.slice(0,8).map(x=>dsLabel(x.ds)).join('、')}${t.days.length>8?' ほか':''}）</span>`;
+
+  box.innerHTML='<label class="f" style="margin-top:8px">候補（チェックを外すと除外できます）</label>';
   const list=document.createElement('div'); list.className='rlp';
   let n=0;
   data.people.filter(p=>p.active).forEach(p=>{
-    const ng=[], warn=[];
-    if(p.id===cur)ng.push('この日の担当');
-    if((p.gaikin||[]).includes(wd))ng.push('外勤日');
-    if(onRotation(p,ds))ng.push('ローテ中');
-    if(weekDuties(p.id,ds)>=WEEK_CAP)warn.push(`週${WEEK_CAP+1}回目`);
-    if(dutyOn(shiftDate(ds,-1))===p.id||dutyOn(shiftDate(ds,1))===p.id)warn.push('前後の日も担当');
+    const ok=t.days.filter(({ds,cur})=>rlEligible(p,ds,cur)).length;
     const l=document.createElement('label');
-    const note=[...ng,...warn];
-    l.innerHTML=`<input type="checkbox" value="${p.id}" ${ng.length?'disabled':'checked'}>`
+    const note=ok===0?'対象日を担当できません':(ok<t.days.length?`${ok}/${t.days.length}日のみ可`:'');
+    l.innerHTML=`<input type="checkbox" value="${p.id}" ${ok?'checked':'disabled'}>`
       +`<span class="dot" style="background:${pColor(p.id)}"></span>${p.name}`
-      +(note.length?`<span class="why">（${note.join('・')}）</span>`:'');
-    if(ng.length)l.classList.add('ng');
+      +(note?`<span class="why">（${note}）</span>`:'');
+    if(!ok)l.classList.add('ng');
     else{
       n++;
-      l.querySelector('input').addEventListener('change',e=>{
-        l.classList.toggle('off',!e.target.checked);
-      });
+      l.querySelector('input').addEventListener('change',e=>l.classList.toggle('off',!e.target.checked));
     }
     list.appendChild(l);
   });
   box.appendChild(list);
-  if(n===0)res.textContent='この日に代われる人がいません（外勤日・ローテ期間をご確認ください）';
+  if(n===0)res.textContent='代われる人がいません（外勤日・ローテ期間をご確認ください）';
 }
 
 function spinRoulette(){
-  const ids=[...document.querySelectorAll('#rlCands input:checked')].map(i=>i.value);
-  if(ids.length===0){ alert('候補が1人もいません。除外のチェックを見直してください。'); return; }
+  const t=rlTargets();
+  if(t.err){ alert(t.err); return; }
+  const excluded=new Set([...document.querySelectorAll('#rlCands input:not(:checked)')].map(i=>i.value));
+  const pool=data.people.filter(p=>p.active&&!excluded.has(p.id));
+  if(pool.length===0){ alert('候補が1人もいません。除外のチェックを見直してください。'); return; }
+
+  // 対象日はいったん空けたものとして、1日ずつ抽選する
+  const taken={}; t.days.forEach(({ds})=>taken[ds]=null);
+  const out=[]; let none=0;
+  for(const {ds,cur} of t.days){
+    const able=pool.filter(p=>rlEligible(p,ds,cur));
+    if(able.length===0){ out.push({ds,cur,to:null}); none++; continue; }
+    const good=able.filter(p=>rlWarn(p,ds,taken).length===0);   // ルールに反しない人を優先
+    const use=good.length?good:able;
+    const win=use[Math.floor(Math.random()*use.length)];
+    out.push({ds,cur,to:win.id,warn:rlWarn(win,ds,taken)});
+    taken[ds]=win.id;
+  }
+
   const res=document.getElementById('rlResult'), btn=document.getElementById('rlSpin');
   btn.disabled=true;
   document.getElementById('rlApply').style.display='none';
+  document.getElementById('rlTableWrap').style.display='none';
   res.className='spin';
-  const show=id=>res.innerHTML=`<span class="dot" style="background:${pColor(id)}"></span>${pName(id)}`;
-  let t=0, delay=60;
+  const names=pool.map(p=>p.id);
+  let el=0, delay=60;
   const tick=()=>{
-    show(ids[Math.floor(Math.random()*ids.length)]);
-    t+=delay; delay*=1.13;
-    if(t<1800){ setTimeout(tick,delay); return; }
-    rlWinner=ids[Math.floor(Math.random()*ids.length)];
-    res.className=''; show(rlWinner);
+    const id=names[Math.floor(Math.random()*names.length)];
+    res.innerHTML=`<span class="dot" style="background:${pColor(id)}"></span>${pName(id)}`;
+    el+=delay; delay*=1.13;
+    if(el<1800){ setTimeout(tick,delay); return; }
+    rlResult=out;
+    res.className='';
+    if(out.length===1&&out[0].to)
+      res.innerHTML=`<span class="dot" style="background:${pColor(out[0].to)}"></span>${pName(out[0].to)}`;
+    else
+      res.textContent=`${out.length-none}日分の代役が決まりました`+(none?`（${none}日は該当者なし）`:'');
+    renderRlTable(out);
     btn.disabled=false; btn.textContent='もう一度回す';
-    document.getElementById('rlApply').style.display='';
+    if(out.some(r=>r.to))document.getElementById('rlApply').style.display='';
   };
   tick();
 }
 
+function renderRlTable(out){
+  const tb=document.getElementById('rlBody'); tb.innerHTML='';
+  out.forEach(r=>{
+    const to=r.to
+      ? `<span class="dot" style="background:${pColor(r.to)}"></span>${pName(r.to)}`
+        +(r.warn&&r.warn.length?`<span class="why">（${r.warn.join('・')}）</span>`:'')
+      : '<span class="muted">該当者なし</span>';
+    tb.innerHTML+=`<tr><td>${dsLabel(r.ds)}</td>`
+      +`<td>${r.cur?pName(r.cur):'<span class="muted">未割当</span>'}</td><td>${to}</td></tr>`;
+  });
+  document.getElementById('rlTableWrap').style.display=out.length>1?'':'none';
+}
+
 function applyRoulette(){
-  const ds=document.getElementById('rlDate').value;
-  if(!ds||!rlWinner)return;
-  const fy=fyOf(ds), cur=dutyOn(ds);
-  if(!confirm(`${ds.replaceAll('-','/')} の担当を`
-    +`${cur?`「${pName(cur)}」から`:''}「${pName(rlWinner)}」に変更します。\nよろしいですか？`))return;
-  (data.schedules[fy]||(data.schedules[fy]={}))[ds]=rlWinner;
-  saveData();
-  if(fy===curFy)renderSchedule(); else renderRoulette();
+  if(!rlResult)return;
+  const rows=rlResult.filter(r=>r.to);
+  if(rows.length===0)return;
+  if(!confirm(`${rows.length}日分の担当を、この結果に置き換えます。\n（もとの担当は上書きされ、元には戻せません）\nよろしいですか？`))return;
+  rows.forEach(r=>{
+    const fy=fyOf(r.ds);
+    (data.schedules[fy]||(data.schedules[fy]={}))[r.ds]=r.to;
+  });
+  saveData(); renderSchedule();
 }
 
 /* ---- 手動調整 ---- */
@@ -1167,7 +1247,7 @@ Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleA
     if(fy===cur)o.selected=true; sel.appendChild(o);
   }
   curFy=cur; curMonth={y:cur,m:4};
-  document.getElementById('rlDate').value=k(now.getFullYear(),now.getMonth()+1,now.getDate());
+  document.getElementById('rlFrom').value=k(now.getFullYear(),now.getMonth()+1,now.getDate());
   migrate(data);
   await initStore();
   renderAll();
