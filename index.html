@@ -75,11 +75,11 @@
   .months button{border:1px solid var(--blue-line);background:#fff;border-radius:6px;padding:6px 11px;
     font-size:13.5px;cursor:pointer;color:var(--ink)}
   .months button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--blue-line);border-radius:8px;overflow:hidden}
+  .cal{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1px solid var(--blue-line);border-radius:8px;overflow:hidden}
   .cal .h{background:var(--navy);color:#fff;font-size:12.5px;padding:5px 0;text-align:center}
   .cal .c{min-height:64px;border-top:1px solid var(--blue-line);border-left:1px solid var(--blue-line);
     background:#fff;padding:4px 5px;font-size:12.5px;position:relative}
-  .cal .c:nth-child(7n+1){border-left:none}
+  .cal .c:nth-child(5n+1){border-left:none}
   .cal .c .d{font-size:11.5px;color:var(--sub)}
   .cal .c.we{background:var(--wend)}
   .cal .c.ho{background:var(--hol)}
@@ -469,7 +469,7 @@ const FIREBASE_CONFIG = {
    genStart = 年度ごとの「作成を始める月」。年度の途中から始める場合に使い、
               それより前の月は自動作成の対象外・担当日数の集計対象外になります。 */
 const WD=['日','月','火','水','木','金','土'];
-const CAL_ORDER=[1,2,3,4,5,6,0];   // カレンダーの列順（月曜始まり）
+const CAL_ORDER=[1,2,3,4,5];   // カレンダーの列（月〜金のみ。土日は表示しない）
 let data={people:[],schedules:{}};
 let curFy, curMonth, modalCtx=null;
 let db=null, docRef=null, lastSavedJson='';
@@ -1005,16 +1005,21 @@ function renderMonthBtns(){
 function renderCal(){
   const {y,m}=curMonth; const cal=document.getElementById('cal'); cal.innerHTML='';
   CAL_ORDER.forEach(w=>{const h=document.createElement('div');h.className='h';h.textContent=WD[w];cal.appendChild(h);});
-  const first=new Date(y,m-1,1).getDay(); const last=new Date(y,m,0).getDate();
-  const lead=(first+6)%7;   // 月曜始まりでの、1日までの空きマス
+  const last=new Date(y,m,0).getDate();
+  // 最初の平日が入る列のぶんだけ空けてから並べる（土日は表示しない）
+  let lead=0;
+  for(let d=1;d<=last;d++){
+    const wd=new Date(y,m-1,d).getDay();
+    if(wd>=1&&wd<=5){ lead=wd-1; break; }
+  }
   const s=data.schedules[curFy]||{};
   for(let i=0;i<lead;i++){const c=document.createElement('div');c.className='c we';cal.appendChild(c);}
   for(let d=1;d<=last;d++){
     const wd=new Date(y,m-1,d).getDay(); const hol=isHoliday(y,m,d);
+    if(wd===0||wd===6)continue;
     const c=document.createElement('div'); c.className='c';
     let inner=`<span class="d">${d}</span>`;
-    if(wd===0||wd===6){ c.classList.add('we'); }
-    else if(hol){ c.classList.add('ho'); inner+=`<span class="hn">${hol}</span>`; }
+    if(hol){ c.classList.add('ho'); inner+=`<span class="hn">${hol}</span>`; }
     else{
       c.classList.add('wd');
       const ds=k(y,m,d); const id=s[ds];
