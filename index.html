@@ -123,6 +123,10 @@
   .rules td{text-align:left}
   .rules th{white-space:nowrap}
   .rules .warn{background:var(--hol);border:1px solid #e5b5af;border-radius:8px;padding:11px 13px;margin-bottom:10px}
+  /* 年度の切り替えバー（当番表タブの先頭） */
+  .fybar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px}
+  .fybar>div{flex:0 0 auto}
+  .fybar p{margin:0;flex:1;min-width:180px}
   .cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
   .cardhead h2{margin-bottom:0}
   #printTitle{display:none}
@@ -158,13 +162,13 @@
 </div>
 
 <div class="tabs">
-  <button id="tabM" class="on" onclick="showTab('m')">メンバー登録</button>
-  <button id="tabS" onclick="showTab('s')">当番表</button>
+  <button id="tabS" class="on" onclick="showTab('s')">当番表</button>
+  <button id="tabM" onclick="showTab('m')">メンバー登録</button>
   <button id="tabR" onclick="showTab('r')">ルール</button>
 </div>
 
 <!-- ============ メンバー ============ -->
-<main id="pageM">
+<main id="pageM" style="display:none">
   <div class="note">
     <b>氏名と当番以外の情報（患者情報など）は入力しないでください。</b>
     入力内容はこのページのURLを知っている人全員が見られます。
@@ -223,25 +227,20 @@
   </div>
 </main>
 
-<!-- ============ 当番表 ============ -->
-<main id="pageS" style="display:none">
-  <div class="card">
-    <h2>年度と自動作成</h2>
-    <div class="row" style="margin-bottom:6px">
-      <div style="flex:0;min-width:130px">
-        <label class="f">年度（4月〜翌3月）</label>
-        <select id="fySel" onchange="onFyChange()"></select>
-      </div>
-      <div style="flex:0;min-width:150px">
-        <label class="f">作成を始める月</label>
-        <select id="startSel" onchange="onStartChange()"></select>
-      </div>
-      <div class="btncol">
-        <button class="btn p" onclick="generate()">この年度を自動作成</button>
-        <button class="btn d" onclick="clearSchedule()">この年度の割り当てをすべて削除</button>
-      </div>
+<!-- ============ 当番表（最初に表示するタブ） ============ -->
+<main id="pageS">
+  <div class="card fybar">
+    <div>
+      <label class="f">年度（4月〜翌3月）</label>
+      <select id="fySel" onchange="onFyChange()"></select>
     </div>
     <p class="muted" id="genNote"></p>
+  </div>
+
+  <div class="card">
+    <h2>月表示（日付をタップすると担当を変更できます）</h2>
+    <div class="months" id="monthBtns"></div>
+    <div class="cal" id="cal"></div>
   </div>
 
   <div class="card" id="yearCard">
@@ -256,12 +255,6 @@
       <tbody id="yearBody"></tbody>
     </table>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>月表示（日付をタップすると手動調整できます）</h2>
-    <div class="months" id="monthBtns"></div>
-    <div class="cal" id="cal"></div>
   </div>
 
   <div class="card">
@@ -302,6 +295,20 @@
       <thead><tr><th>名前</th><th>担当日数（コマ数）</th></tr></thead>
       <tbody id="statBody"></tbody>
     </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>年度まるごとの作成・削除</h2>
+    <div class="row" style="margin-bottom:0">
+      <div style="flex:0;min-width:180px">
+        <label class="f">作成を始める月</label>
+        <select id="startSel" onchange="onStartChange()"></select>
+      </div>
+      <div class="btncol">
+        <button class="btn p" onclick="generate()">この年度を自動作成</button>
+        <button class="btn d" onclick="clearSchedule()">この年度の割り当てをすべて削除</button>
+      </div>
     </div>
   </div>
 </main>
@@ -462,6 +469,7 @@ const FIREBASE_CONFIG = {
    genStart = 年度ごとの「作成を始める月」。年度の途中から始める場合に使い、
               それより前の月は自動作成の対象外・担当日数の集計対象外になります。 */
 const WD=['日','月','火','水','木','金','土'];
+const CAL_ORDER=[1,2,3,4,5,6,0];   // カレンダーの列順（月曜始まり）
 let data={people:[],schedules:{}};
 let curFy, curMonth, modalCtx=null;
 let db=null, docRef=null, lastSavedJson='';
@@ -935,7 +943,14 @@ function delPerson(id){
 }
 
 /* ---- 当番表 ---- */
-function onFyChange(){ curFy=+document.getElementById('fySel').value; curMonth={y:curFy,m:4}; renderSchedule(); }
+/* 最初に開く月。今年度なら今月、ほかの年度ならその年度の作成開始月。 */
+function defaultMonth(fy){
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth()+1;
+  if(fy===(m>=4?y:y-1))return{y,m};
+  const f=genMonths(fy)[0];
+  return{y:f.y,m:f.m};
+}
+function onFyChange(){ curFy=+document.getElementById('fySel').value; curMonth=defaultMonth(curFy); renderSchedule(); }
 function renderSchedule(){ renderStartSel(); renderGenNote(); renderYear(); renderMonthBtns(); renderCal(); renderStats(); renderRoulette(); }
 
 function renderStartSel(){
@@ -989,10 +1004,11 @@ function renderMonthBtns(){
 }
 function renderCal(){
   const {y,m}=curMonth; const cal=document.getElementById('cal'); cal.innerHTML='';
-  WD.forEach(w=>{const h=document.createElement('div');h.className='h';h.textContent=w;cal.appendChild(h);});
+  CAL_ORDER.forEach(w=>{const h=document.createElement('div');h.className='h';h.textContent=WD[w];cal.appendChild(h);});
   const first=new Date(y,m-1,1).getDay(); const last=new Date(y,m,0).getDate();
+  const lead=(first+6)%7;   // 月曜始まりでの、1日までの空きマス
   const s=data.schedules[curFy]||{};
-  for(let i=0;i<first;i++){const c=document.createElement('div');c.className='c we';cal.appendChild(c);}
+  for(let i=0;i<lead;i++){const c=document.createElement('div');c.className='c we';cal.appendChild(c);}
   for(let d=1;d<=last;d++){
     const wd=new Date(y,m-1,d).getDay(); const hol=isHoliday(y,m,d);
     const c=document.createElement('div'); c.className='c';
@@ -1246,9 +1262,10 @@ Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleA
     const o=document.createElement('option'); o.value=fy; o.textContent=`${fy}年度`;
     if(fy===cur)o.selected=true; sel.appendChild(o);
   }
-  curFy=cur; curMonth={y:cur,m:4};
+  curFy=cur;
   document.getElementById('rlFrom').value=k(now.getFullYear(),now.getMonth()+1,now.getDate());
   migrate(data);
+  curMonth=defaultMonth(cur);
   await initStore();
   renderAll();
   // ホーム画面インストールを可能にするための下準備(サービスワーカー登録)
