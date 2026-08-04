@@ -92,6 +92,8 @@
   #modal .line{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:14px}
   #modal .line .dt{width:110px;color:var(--sub);font-size:13px}
   #modal select{flex:1}
+  .icrow{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+  .icrow .tl{color:var(--sub);font-size:13px}
   .note{background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;padding:10px 12px;
     font-size:12.5px;color:var(--navy);margin-bottom:16px}
   @media (max-width:600px){ .row>div{min-width:100%} }
@@ -132,15 +134,14 @@
         <div class="wk" id="pGaikin"></div>
       </div>
     </div>
+    <div class="row" style="align-items:flex-start">
+      <div style="flex:1 1 100%">
+        <label class="f">感染制御部ローテ 期間（複数登録できます・なしの場合は空欄のまま）</label>
+        <div id="pIcList"></div>
+        <button class="btn g sm" type="button" onclick="addIcRow()">＋ 期間を追加</button>
+      </div>
+    </div>
     <div class="row">
-      <div>
-        <label class="f">感染制御部ローテ 開始日</label>
-        <input type="date" id="pIc1">
-      </div>
-      <div>
-        <label class="f">感染制御部ローテ 終了日</label>
-        <input type="date" id="pIc2">
-      </div>
       <div>
         <label class="f">細菌検査室ローテ 開始日</label>
         <input type="date" id="pLab1">
@@ -254,9 +255,10 @@ const FIREBASE_CONFIG = {
 
 /* ================= データ =================
    data = {
-     people: [{id,name,gaikin:[1..5],ic1,ic2,lab1,lab2,active:true}],
+     people: [{id,name,gaikin:[1..5],ics:[{s,e},...],lab1,lab2,active:true}],
      schedules: { "2026": { "2026-04-06":"personId or ''(空欄)" } }
-   } */
+   }
+   ics = 感染制御部ローテの期間(複数可)。旧形式の ic1/ic2 は読み込み時に変換します。 */
 const WD=['日','月','火','水','木','金','土'];
 let data={people:[],schedules:{}};
 let curFy, curMonth, modalCtx=null;
@@ -267,6 +269,16 @@ const uid=()=>Math.random().toString(36).slice(2,10);
 const pad=n=>String(n).padStart(2,'0');
 const k=(y,m,d)=>`${y}-${pad(m)}-${pad(d)}`;
 const setSync=t=>document.getElementById('syncNote').textContent=t;
+
+/* 旧形式(ic1/ic2)を ics 配列へそろえる */
+function migrate(d){
+  d.people=d.people||[]; d.schedules=d.schedules||{};
+  d.people.forEach(p=>{
+    if(!Array.isArray(p.ics)) p.ics=(p.ic1&&p.ic2)?[{s:p.ic1,e:p.ic2}]:[];
+    delete p.ic1; delete p.ic2;
+  });
+  return d;
+}
 
 async function initStore(){
   if(!configured){
@@ -282,15 +294,15 @@ async function initStore(){
   // 初回読み込み
   try{
     const snap=await fs.getDoc(docRef);
-    if(snap.exists()&&snap.data().json){ data=JSON.parse(snap.data().json); lastSavedJson=snap.data().json; }
+    if(snap.exists()&&snap.data().json){ data=migrate(JSON.parse(snap.data().json)); lastSavedJson=snap.data().json; }
     setSync('共有データ 読み込み済み');
   }catch(e){ setSync('読み込みエラー: '+e.code); }
   // ほかの端末の変更をリアルタイムに反映
   fs.onSnapshot(docRef,snap=>{
     if(!snap.exists())return;
     const remote=snap.data().json;
-    if(remote&&remote!==JSON.stringify(data)){
-      data=JSON.parse(remote); lastSavedJson=remote;
+    if(remote&&remote!==lastSavedJson){
+      data=migrate(JSON.parse(remote)); lastSavedJson=remote;
       if(!document.getElementById('ovl').classList.contains('show')) renderAll();
       setSync('更新を反映 '+new Date().toLocaleTimeString('ja-JP'));
     }
@@ -354,7 +366,7 @@ function slotDates(y,m,wd){
   return out;
 }
 function inRange(ds,a,b){ return a&&b&&a<=ds&&ds<=b; }
-function onRotation(p,ds){ return inRange(ds,p.ic1,p.ic2)||inRange(ds,p.lab1,p.lab2); }
+function onRotation(p,ds){ return (p.ics||[]).some(r=>inRange(ds,r.s,r.e))||inRange(ds,p.lab1,p.lab2); }
 function availOnDate(p,ds){ return !onRotation(p,ds); }
 const COLORS=['#1d6fd1','#0e8f76','#b5651d','#7b4bbf','#c04a72','#3a7ca5','#8a8f2a','#5b5f97','#c0392b','#2a9d8f'];
 function pColor(id){ const i=data.people.findIndex(p=>p.id===id); return COLORS[(i<0?0:i)%COLORS.length]; }
@@ -433,6 +445,7 @@ function showTab(t){
 }
 function gaikinLabel(g){ return (g&&g.length)?g.map(w=>WD[w]).join('・'):'なし'; }
 function rangeLabel(a,b){ return (a&&b)?`${a.replaceAll('-','/')} 〜 ${b.replaceAll('-','/')}`:'—'; }
+function icLabel(p){ const a=p.ics||[]; return a.length?a.map(r=>rangeLabel(r.s,r.e)).join('<br>'):'—'; }
 
 function renderPeople(){
   const tb=document.getElementById('pBody'); tb.innerHTML='';
@@ -442,7 +455,7 @@ function renderPeople(){
       <td><input type="checkbox" ${p.active?'checked':''} onchange="toggleActive('${p.id}',this.checked)"></td>
       <td style="text-align:left"><span class="dot" style="background:${pColor(p.id)}"></span>${p.name}</td>
       <td>${gaikinLabel(p.gaikin)}</td>
-      <td>${rangeLabel(p.ic1,p.ic2)}</td>
+      <td>${icLabel(p)}</td>
       <td>${rangeLabel(p.lab1,p.lab2)}</td>
       <td>
         <button class="btn g sm" onclick="editPerson('${p.id}')">編集</button>
@@ -456,19 +469,50 @@ function renderPeople(){
 function toggleActive(id,v){ const p=data.people.find(x=>x.id===id); if(p){p.active=v; saveData();} }
 
 let editId=null;
+
+/* ---- 感染制御部ローテの入力欄(可変個) ---- */
+function addIcRow(s='',e=''){
+  const row=document.createElement('div'); row.className='icrow';
+  row.innerHTML=`<input type="date" class="icS" value="${s}"><span class="tl">〜</span>
+    <input type="date" class="icE" value="${e}">
+    <button class="btn d sm" type="button">削除</button>`;
+  row.querySelector('button').onclick=()=>{
+    row.remove();
+    if(!document.querySelector('#pIcList .icrow')) addIcRow();
+  };
+  document.getElementById('pIcList').appendChild(row);
+}
+function setIcRows(list){
+  document.getElementById('pIcList').innerHTML='';
+  const a=(list&&list.length)?list:[{s:'',e:''}];
+  a.forEach(r=>addIcRow(r.s||'',r.e||''));
+}
+/* 入力に不備があれば null を返す（空行は無視） */
+function readIcRows(){
+  const out=[];
+  for(const row of document.querySelectorAll('#pIcList .icrow')){
+    const s=row.querySelector('.icS').value, e=row.querySelector('.icE').value;
+    if(!s&&!e)continue;
+    if(!s||!e||s>e)return null;
+    out.push({s,e});
+  }
+  out.sort((a,b)=>a.s<b.s?-1:(a.s>b.s?1:0));
+  return out;
+}
+
 function savePerson(){
   const name=document.getElementById('pName').value.trim();
   if(!name){ alert('名前を入力してください。'); return; }
   const gaikin=[...document.querySelectorAll('#pGaikin input:checked')].map(i=>+i.value);
-  const ic1=document.getElementById('pIc1').value, ic2=document.getElementById('pIc2').value;
+  const ics=readIcRows();
   const lab1=document.getElementById('pLab1').value, lab2=document.getElementById('pLab2').value;
-  if((ic1&&!ic2)||(!ic1&&ic2)||(ic1&&ic2&&ic1>ic2)){ alert('感染制御部ローテの期間を正しく入力してください（開始・終了の両方、開始≦終了）。'); return; }
+  if(ics===null){ alert('感染制御部ローテの期間を正しく入力してください（開始・終了の両方、開始≦終了）。'); return; }
   if((lab1&&!lab2)||(!lab1&&lab2)||(lab1&&lab2&&lab1>lab2)){ alert('細菌検査室ローテの期間を正しく入力してください。'); return; }
   if(editId){
     const p=data.people.find(x=>x.id===editId);
-    Object.assign(p,{name,gaikin,ic1,ic2,lab1,lab2});
+    Object.assign(p,{name,gaikin,ics,lab1,lab2});
   }else{
-    data.people.push({id:uid(),name,gaikin,ic1,ic2,lab1,lab2,active:true});
+    data.people.push({id:uid(),name,gaikin,ics,lab1,lab2,active:true});
   }
   cancelEdit(); saveData(); renderPeople();
 }
@@ -480,7 +524,7 @@ function editPerson(id){
   document.getElementById('cancelBtn').style.display='';
   document.getElementById('pName').value=p.name;
   document.querySelectorAll('#pGaikin input').forEach(i=>{i.checked=(p.gaikin||[]).includes(+i.value); i.parentElement.classList.toggle('checked',i.checked);});
-  document.getElementById('pIc1').value=p.ic1||''; document.getElementById('pIc2').value=p.ic2||'';
+  setIcRows(p.ics);
   document.getElementById('pLab1').value=p.lab1||''; document.getElementById('pLab2').value=p.lab2||'';
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -491,7 +535,8 @@ function cancelEdit(){
   document.getElementById('cancelBtn').style.display='none';
   document.getElementById('pName').value='';
   document.querySelectorAll('#pGaikin input').forEach(i=>{i.checked=false;i.parentElement.classList.remove('checked');});
-  ['pIc1','pIc2','pLab1','pLab2'].forEach(id=>document.getElementById(id).value='');
+  setIcRows([]);
+  ['pLab1','pLab2'].forEach(id=>document.getElementById(id).value='');
 }
 function delPerson(id){
   const p=data.people.find(x=>x.id===id);
@@ -611,7 +656,7 @@ function closeModal(){ document.getElementById('ovl').classList.remove('show'); 
 
 /* ================= 初期化 ================= */
 function renderAll(){ renderPeople(); renderSchedule(); }
-Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleActive,
+Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleActive,addIcRow,
   onFyChange,generate,openModal,bulkApply,saveModal,closeModal,reloadNoop:()=>{}});
 
 (async function init(){
@@ -622,6 +667,7 @@ Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleA
     l.querySelector('input').addEventListener('change',e=>l.classList.toggle('checked',e.target.checked));
     g.appendChild(l);
   });
+  setIcRows([]);
   const now=new Date(); const thisFy=now.getMonth()+1>=4?now.getFullYear():now.getFullYear()-1;
   const sel=document.getElementById('fySel');
   for(let fy=thisFy-1;fy<=thisFy+3;fy++){
