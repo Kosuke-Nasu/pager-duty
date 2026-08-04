@@ -289,12 +289,12 @@
     <div class="tblwrap">
       <table>
         <tr><th style="width:70px">優先</th><th>ルール</th></tr>
-        <tr><td>高</td><td>2日連続で担当しない（前日・翌日に当番を入れない）</td></tr>
-        <tr><td>低</td><td>1人あたり<b>週<span id="rCap">2</span>回まで</b>（週は月曜〜日曜で数えます）</td></tr>
+        <tr><td>高</td><td>1人あたり<b>週<span id="rCap">2</span>回まで</b>（週は月曜〜日曜で数えます）</td></tr>
+        <tr><td>低</td><td>2日連続で担当しない（前日・翌日に当番を入れない）</td></tr>
       </table>
     </div>
-    <p>人数が足りないときは、先に「週<span class="rCap2">2</span>回まで」のほうを崩します。
-       たとえば3人しかいない場合は「月・水・金」のように週3回にしてでも、2日連続は避けます。</p>
+    <p>人数が足りないときは、先に「2日連続で担当しない」のほうを崩します。
+       週の回数が<span class="rCap2">2</span>回を超えるより、連続する日ができるほうを許容します。</p>
     <p>土日祝を挟む場合は連続にあたりません（金曜と翌月曜、祝日を挟んだ月曜と水曜など）。
        どうしても守れなかった枠は、作成後に件数をお知らせします。</p>
 
@@ -526,11 +526,11 @@ function pName(id){ const p=data.people.find(x=>x.id===id); return p?p.name:'?';
 
 /* ================= 自動作成 =================
    ルール（守れない枠が出た場合は作成後に件数を報告します）
-   ・2日連続で担当しない（前日・翌日に当番が入らない）
    ・1人あたり週2回まで
+   ・2日連続で担当しない（前日・翌日に当番が入らない）
    ・年度内の担当日数をできるだけ均等に（BALANCE_TOL 以内を目指す）
    ・「作成を始める月」より前の月は対象外（空欄のまま・担当日数にも数えない）
-   優先順位は 2日連続の回避 > 週2回の上限。人手が足りないときは週3回のほうを先に許容します。 */
+   優先順位は 週2回の上限 > 2日連続の回避。人手が足りないときは2日連続のほうを先に許容します。 */
 const DEFAULT_GEN_START={2026:8};  // 初回のみ使う既定値。以後は画面から変更でき、data.genStart に保存されます
 const WEEK_CAP=2;           // 1人あたりの週の担当回数の上限
 const BALANCE_TOL=1;        // 担当日数の「最多−最少」をここまで詰める
@@ -603,7 +603,7 @@ function generate(){
   function pick(list,dates,score){
     const tiers=[
       list.filter(p=>feasible(p,dates,true,true)),    // 週2回まで＆2日連続なし
-      list.filter(p=>feasible(p,dates,false,true)),   // 2日連続なしを優先し週3回を許容
+      list.filter(p=>feasible(p,dates,true,false)),   // 週2回の上限を優先し2日連続を許容
       list,
     ];
     const use=tiers.find(t=>t.length>0);
