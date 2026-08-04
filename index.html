@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PitchDuty</title>
+<!-- ホーム画面インストール用の設定 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0e3a6b">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PitchDuty">
+<style>
+  :root{
+    --navy:#0e3a6b;        /* 濃紺:ヘッダー */
+    --blue:#1d6fd1;        /* 主ボタン */
+    --blue-soft:#e8f1fb;   /* 薄青:面 */
+    --blue-line:#c3d8ef;   /* 罫線 */
+    --ink:#1b2a3a;         /* 本文 */
+    --sub:#5b7290;         /* 補助文字 */
+    --white:#ffffff;
+    --bg:#f5f8fc;
+    --danger:#c0392b;
+    --hol:#fdeeee;
+    --wend:#f1f3f6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Noto Sans JP",Meiryo,sans-serif;
+    font-size:15px;line-height:1.6}
+  header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  header h1{font-size:19px;font-weight:700;letter-spacing:.06em}
+  header .sub{font-size:12px;opacity:.75}
+  #syncNote{margin-left:auto;font-size:12px;opacity:.85}
+  #setupBanner{display:none;background:#fff6e0;border-bottom:1px solid #e8d49a;color:#7a5b00;
+    padding:10px 20px;font-size:13px}
+  .tabs{display:flex;gap:0;background:var(--white);border-bottom:2px solid var(--blue-line);padding:0 12px}
+  .tabs button{appearance:none;border:none;background:none;padding:12px 18px;font-size:15px;font-weight:600;
+    color:var(--sub);cursor:pointer;border-bottom:3px solid transparent}
+  .tabs button.on{color:var(--navy);border-bottom-color:var(--blue)}
+  main{max-width:1080px;margin:0 auto;padding:18px 14px 60px}
+  .card{background:var(--white);border:1px solid var(--blue-line);border-radius:10px;padding:16px;margin-bottom:18px}
+  .card h2{font-size:15px;color:var(--navy);margin-bottom:10px;padding-left:10px;border-left:4px solid var(--blue)}
+  label.f{display:block;font-size:12.5px;color:var(--sub);margin-bottom:3px}
+  input[type=text],input[type=date],select{
+    border:1px solid var(--blue-line);border-radius:6px;padding:7px 9px;font-size:14px;background:#fff;color:var(--ink)}
+  input[type=text]{width:100%}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+  .row>div{min-width:150px;flex:1}
+  .wk{display:flex;gap:6px;flex-wrap:wrap}
+  .wk label{display:flex;align-items:center;gap:4px;background:var(--blue-soft);border:1px solid var(--blue-line);
+    border-radius:6px;padding:5px 9px;font-size:13.5px;cursor:pointer;user-select:none}
+  .wk label.checked{background:var(--blue);border-color:var(--blue);color:#fff}
+  .wk input{display:none}
+  .btn{appearance:none;border:none;border-radius:7px;padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn.p{background:var(--blue);color:#fff}
+  .btn.p:hover{background:#175dae}
+  .btn.g{background:var(--blue-soft);color:var(--navy);border:1px solid var(--blue-line)}
+  .btn.d{background:#fff;color:var(--danger);border:1px solid #e5b5af}
+  .btn.sm{padding:5px 10px;font-size:12.5px}
+  table{border-collapse:collapse;width:100%;background:#fff}
+  th,td{border:1px solid var(--blue-line);padding:6px 8px;font-size:13.5px;text-align:center;vertical-align:middle}
+  th{background:var(--blue-soft);color:var(--navy);font-weight:600}
+  .tblwrap{overflow-x:auto}
+  .muted{color:var(--sub);font-size:12.5px}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:1px}
+  .months{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  .months button{border:1px solid var(--blue-line);background:#fff;border-radius:6px;padding:6px 11px;
+    font-size:13.5px;cursor:pointer;color:var(--ink)}
+  .months button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--blue-line);border-radius:8px;overflow:hidden}
+  .cal .h{background:var(--navy);color:#fff;font-size:12.5px;padding:5px 0;text-align:center}
+  .cal .c{min-height:64px;border-top:1px solid var(--blue-line);border-left:1px solid var(--blue-line);
+    background:#fff;padding:4px 5px;font-size:12.5px;position:relative}
+  .cal .c:nth-child(7n+1){border-left:none}
+  .cal .c .d{font-size:11.5px;color:var(--sub)}
+  .cal .c.we{background:var(--wend)}
+  .cal .c.ho{background:var(--hol)}
+  .cal .c.wd{cursor:pointer}
+  .cal .c.wd:hover{outline:2px solid var(--blue);outline-offset:-2px}
+  .cal .name{margin-top:3px;font-weight:600;font-size:13px;color:var(--navy);word-break:break-all}
+  .cal .hn{display:block;font-size:10.5px;color:var(--danger)}
+  .cal .none{color:#b6c3d2;font-weight:400}
+  .cal .out{margin-top:2px;font-size:10px;color:var(--danger)}
+  #ovl{position:fixed;inset:0;background:rgba(14,58,107,.45);display:none;align-items:flex-start;justify-content:center;
+    padding:40px 12px;z-index:50;overflow:auto}
+  #ovl.show{display:flex}
+  #modal{background:#fff;border-radius:10px;max-width:480px;width:100%;padding:18px}
+  #modal h3{font-size:15px;color:var(--navy);margin-bottom:10px}
+  #modal .line{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:14px}
+  #modal .line .dt{width:110px;color:var(--sub);font-size:13px}
+  #modal select{flex:1}
+  .note{background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;padding:10px 12px;
+    font-size:12.5px;color:var(--navy);margin-bottom:16px}
+  @media (max-width:600px){ .row>div{min-width:100%} }
+</style>
+</head>
+<body>
+<header>
+  <h1>PitchDuty <span style="font-size:12px;font-weight:400;opacity:.8">ピッチ当番表</span></h1>
+  <span class="sub">平日（月〜金）／祝日は当番なし／年度：4月〜翌3月</span>
+  <span id="syncNote">読み込み中…</span>
+</header>
+<div id="setupBanner">
+  ⚠ まだFirebaseの設定が済んでいないため、<b>この端末の中だけで動くお試しモード</b>です（保存されず、他の人とも共有されません）。index.html内の「FIREBASE_CONFIG」に設定値を貼り付けると共有できるようになります。
+</div>
+
+<div class="tabs">
+  <button id="tabM" class="on" onclick="showTab('m')">メンバー登録</button>
+  <button id="tabS" onclick="showTab('s')">当番表</button>
+</div>
+
+<!-- ============ メンバー ============ -->
+<main id="pageM">
+  <div class="note">
+    このアプリのデータはFirebase（インターネット上のデータ保存サービス）に保存され、
+    <b>このページのURLを知っている人全員が同じ内容を見て編集できます</b>。
+    氏名と当番以外の情報（患者情報など）は入力しないでください。
+  </div>
+
+  <div class="card">
+    <h2 id="formTitle">メンバーを追加</h2>
+    <div class="row">
+      <div style="flex:2">
+        <label class="f">名前</label>
+        <input type="text" id="pName" placeholder="例）山田">
+      </div>
+      <div style="flex:3">
+        <label class="f">外勤日（複数選択可・なしの場合は未選択のまま）</label>
+        <div class="wk" id="pGaikin"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label class="f">感染制御部ローテ 開始日</label>
+        <input type="date" id="pIc1">
+      </div>
+      <div>
+        <label class="f">感染制御部ローテ 終了日</label>
+        <input type="date" id="pIc2">
+      </div>
+      <div>
+        <label class="f">細菌検査室ローテ 開始日</label>
+        <input type="date" id="pLab1">
+      </div>
+      <div>
+        <label class="f">細菌検査室ローテ 終了日</label>
+        <input type="date" id="pLab2">
+      </div>
+    </div>
+    <div class="row" style="margin-bottom:0">
+      <div style="flex:0">
+        <button class="btn p" id="saveBtn" onclick="savePerson()">追加する</button>
+      </div>
+      <div style="flex:0">
+        <button class="btn g" id="cancelBtn" style="display:none" onclick="cancelEdit()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>メンバー一覧（当番に入れる人にチェック）</h2>
+    <div class="tblwrap">
+    <table id="pTable">
+      <thead><tr>
+        <th>当番対象</th><th>名前</th><th>外勤日</th><th>感染制御部ローテ</th><th>細菌検査室ローテ</th><th></th>
+      </tr></thead>
+      <tbody id="pBody"></tbody>
+    </table>
+    </div>
+    <p class="muted" style="margin-top:8px">※ローテ期間中の日は自動作成時に当番へ組み入れられません。月の途中までローテの場合は、その月の空いている週から担当に入ります。</p>
+  </div>
+</main>
+
+<!-- ============ 当番表 ============ -->
+<main id="pageS" style="display:none">
+  <div class="card">
+    <h2>年度と自動作成</h2>
+    <div class="row" style="margin-bottom:6px">
+      <div style="flex:0;min-width:130px">
+        <label class="f">年度（4月〜翌3月）</label>
+        <select id="fySel" onchange="onFyChange()"></select>
+      </div>
+      <div style="flex:0">
+        <button class="btn p" onclick="generate()">この年度を自動作成</button>
+      </div>
+    </div>
+    <p class="muted">自動作成すると、この年度の既存の割り当て（手動調整を含む）はすべて作り直されます。年間の担当日数ができるだけ均等になるように、各曜日×各月に1人ずつ割り当てます。ほかの人の変更は自動で画面に反映されます。</p>
+  </div>
+
+  <div class="card">
+    <h2>年間一覧（各月の曜日担当）</h2>
+    <div class="tblwrap">
+    <table>
+      <thead><tr><th>月</th><th>月曜</th><th>火曜</th><th>水曜</th><th>木曜</th><th>金曜</th></tr></thead>
+      <tbody id="yearBody"></tbody>
+    </table>
+    </div>
+    <p class="muted" style="margin-top:8px">「→」は月の途中で担当が交代することを示します（ローテ期間との重なり、または手動調整によるもの）。</p>
+  </div>
+
+  <div class="card">
+    <h2>月表示（日付をタップすると手動調整できます）</h2>
+    <div class="months" id="monthBtns"></div>
+    <div class="cal" id="cal"></div>
+  </div>
+
+  <div class="card">
+    <h2>担当日数の集計（この年度）</h2>
+    <div class="tblwrap">
+    <table>
+      <thead><tr><th>名前</th><th>担当日数（コマ数）</th></tr></thead>
+      <tbody id="statBody"></tbody>
+    </table>
+    </div>
+  </div>
+</main>
+
+<!-- ============ 手動調整モーダル ============ -->
+<div id="ovl" onclick="if(event.target===this)closeModal()">
+  <div id="modal">
+    <h3 id="mTitle"></h3>
+    <div class="line">
+      <span class="dt">一括変更</span>
+      <select id="mBulk" onchange="bulkApply()"></select>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--blue-line);margin:10px 0">
+    <div id="mLines"></div>
+    <div class="row" style="margin-top:14px;margin-bottom:0">
+      <div style="flex:0"><button class="btn p" onclick="saveModal()">保存する</button></div>
+      <div style="flex:0"><button class="btn g" onclick="closeModal()">閉じる</button></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+/* ==========================================================
+   ★★★ ここにFirebaseの設定値を貼り付けてください ★★★
+   Firebaseの管理画面で「ウェブアプリを追加」した際に表示される
+   const firebaseConfig = { ... } の中身をそのままコピーします。
+   ========================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCSmV6QTNKkuIkPpR46CENwNSH006BQkA4",
+  authDomain: "pager-duty-28873.firebaseapp.com",
+  projectId: "pager-duty-28873",
+  storageBucket: "pager-duty-28873.firebasestorage.app",
+  messagingSenderId: "706975348818",
+  appId: "1:706975348818:web:fdb9a3ef4d651b8bbd478b",
+  measurementId: "G-D82R27YYTZ"
+};
+/* ========================================================== */
+
+/* ================= データ =================
+   data = {
+     people: [{id,name,gaikin:[1..5],ic1,ic2,lab1,lab2,active:true}],
+     schedules: { "2026": { "2026-04-06":"personId or ''(空欄)" } }
+   } */
+const WD=['日','月','火','水','木','金','土'];
+let data={people:[],schedules:{}};
+let curFy, curMonth, modalCtx=null;
+let db=null, docRef=null, lastSavedJson='';
+const configured = !String(FIREBASE_CONFIG.apiKey).includes('ここに');
+
+const uid=()=>Math.random().toString(36).slice(2,10);
+const pad=n=>String(n).padStart(2,'0');
+const k=(y,m,d)=>`${y}-${pad(m)}-${pad(d)}`;
+const setSync=t=>document.getElementById('syncNote').textContent=t;
+
+async function initStore(){
+  if(!configured){
+    document.getElementById('setupBanner').style.display='block';
+    setSync('お試しモード（保存されません）');
+    return;
+  }
+  const {initializeApp}=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const fs=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  const app=initializeApp(FIREBASE_CONFIG);
+  db=fs.getFirestore(app);
+  docRef=fs.doc(db,'pitchduty','main');
+  // 初回読み込み
+  try{
+    const snap=await fs.getDoc(docRef);
+    if(snap.exists()&&snap.data().json){ data=JSON.parse(snap.data().json); lastSavedJson=snap.data().json; }
+    setSync('共有データ 読み込み済み');
+  }catch(e){ setSync('読み込みエラー: '+e.code); }
+  // ほかの端末の変更をリアルタイムに反映
+  fs.onSnapshot(docRef,snap=>{
+    if(!snap.exists())return;
+    const remote=snap.data().json;
+    if(remote&&remote!==JSON.stringify(data)){
+      data=JSON.parse(remote); lastSavedJson=remote;
+      if(!document.getElementById('ovl').classList.contains('show')) renderAll();
+      setSync('更新を反映 '+new Date().toLocaleTimeString('ja-JP'));
+    }
+  });
+  window._fsSetDoc=fs.setDoc;
+}
+async function saveData(){
+  if(!configured){ setSync('お試しモード（保存されません）'); return; }
+  try{
+    const json=JSON.stringify(data);
+    await window._fsSetDoc(docRef,{json,updatedAt:Date.now()});
+    lastSavedJson=json;
+    setSync('保存済み '+new Date().toLocaleTimeString('ja-JP'));
+  }catch(e){ setSync('保存エラー: '+(e.code||e.message)); }
+}
+
+/* ================= 祝日計算 ================= */
+const holCache={};
+function holidays(y){
+  if(holCache[y])return holCache[y];
+  const m=new Map();
+  const add=(mo,d,n)=>m.set(k(y,mo,d),n);
+  const nthMon=(mo,n)=>{const f=new Date(y,mo-1,1).getDay();const first=(f<=1)?(2-f):(9-f);return first+(n-1)*7;};
+  add(1,1,'元日'); add(1,nthMon(1,2),'成人の日'); add(2,11,'建国記念の日');
+  if(y>=2020)add(2,23,'天皇誕生日');
+  add(3,Math.floor(20.8431+0.242194*(y-1980))-Math.floor((y-1980)/4),'春分の日');
+  add(4,29,'昭和の日'); add(5,3,'憲法記念日'); add(5,4,'みどりの日'); add(5,5,'こどもの日');
+  add(7,nthMon(7,3),'海の日'); add(8,11,'山の日'); add(9,nthMon(9,3),'敬老の日');
+  add(9,Math.floor(23.2488+0.242194*(y-1980))-Math.floor((y-1980)/4),'秋分の日');
+  add(10,nthMon(10,2),'スポーツの日'); add(11,3,'文化の日'); add(11,23,'勤労感謝の日');
+  [...m.keys()].forEach(ds=>{
+    const dt=new Date(ds+'T00:00:00');
+    if(dt.getDay()===0){
+      let nd=new Date(dt);
+      do{nd.setDate(nd.getDate()+1);}while(m.has(k(nd.getFullYear(),nd.getMonth()+1,nd.getDate())));
+      m.set(k(nd.getFullYear(),nd.getMonth()+1,nd.getDate()),'振替休日');
+    }
+  });
+  for(let mo=1;mo<=12;mo++){
+    const last=new Date(y,mo,0).getDate();
+    for(let d=2;d<last;d++){
+      const key=k(y,mo,d);
+      if(!m.has(key)&&m.has(k(y,mo,d-1))&&m.has(k(y,mo,d+1))&&new Date(y,mo-1,d).getDay()!==0)
+        m.set(key,'国民の休日');
+    }
+  }
+  holCache[y]=m; return m;
+}
+const isHoliday=(y,mo,d)=>holidays(y).get(k(y,mo,d));
+
+/* ================= 補助 ================= */
+function fyMonths(fy){
+  const a=[]; for(let m=4;m<=12;m++)a.push({y:fy,m}); for(let m=1;m<=3;m++)a.push({y:fy+1,m});
+  return a;
+}
+function slotDates(y,m,wd){
+  const out=[]; const last=new Date(y,m,0).getDate();
+  for(let d=1;d<=last;d++){
+    if(new Date(y,m-1,d).getDay()===wd && !isHoliday(y,m,d)) out.push(k(y,m,d));
+  }
+  return out;
+}
+function inRange(ds,a,b){ return a&&b&&a<=ds&&ds<=b; }
+function onRotation(p,ds){ return inRange(ds,p.ic1,p.ic2)||inRange(ds,p.lab1,p.lab2); }
+function availOnDate(p,ds){ return !onRotation(p,ds); }
+const COLORS=['#1d6fd1','#0e8f76','#b5651d','#7b4bbf','#c04a72','#3a7ca5','#8a8f2a','#5b5f97','#c0392b','#2a9d8f'];
+function pColor(id){ const i=data.people.findIndex(p=>p.id===id); return COLORS[(i<0?0:i)%COLORS.length]; }
+function pName(id){ const p=data.people.find(x=>x.id===id); return p?p.name:'?'; }
+
+/* ================= 自動作成 ================= */
+function generate(){
+  const members=data.people.filter(p=>p.active);
+  if(members.length===0){ alert('当番対象のメンバーがいません。メンバー登録タブでチェックしてください。'); return; }
+  if(data.schedules[curFy] && Object.keys(data.schedules[curFy]).length>0){
+    if(!confirm(`${curFy}年度の割り当てを作り直します。手動調整も消えます。よろしいですか？`)) return;
+  }
+  const sched={}; const load={}; members.forEach(p=>load[p.id]=0);
+  const monthCnt={};
+  for(const {y,m} of fyMonths(curFy)){
+    const mk=`${y}-${m}`; monthCnt[mk]={};
+    for(let wd=1;wd<=5;wd++){
+      const dates=slotDates(y,m,wd);
+      if(dates.length===0)continue;
+      const cands=members.filter(p=>!(p.gaikin||[]).includes(wd));
+      const score=p=>load[p.id]+(monthCnt[mk][p.id]||0)*0.3+Math.random()*0.01;
+      const full=cands.filter(p=>dates.every(ds=>availOnDate(p,ds)));
+      if(full.length>0){
+        full.sort((a,b)=>score(a)-score(b));
+        const p=full[0];
+        dates.forEach(ds=>sched[ds]=p.id);
+        load[p.id]+=dates.length; monthCnt[mk][p.id]=(monthCnt[mk][p.id]||0)+1;
+      }else{
+        let i=0;
+        while(i<dates.length){
+          const ds=dates[i];
+          const av=cands.filter(p=>availOnDate(p,ds));
+          if(av.length===0){ sched[ds]=''; i++; continue; }
+          av.sort((a,b)=>score(a)-score(b));
+          const p=av[0]; let j=i;
+          while(j<dates.length && availOnDate(p,dates[j])){ sched[dates[j]]=p.id; load[p.id]++; j++; }
+          monthCnt[mk][p.id]=(monthCnt[mk][p.id]||0)+1;
+          i=j;
+        }
+      }
+    }
+  }
+  for(let t=0;t<300;t++){
+    const ids=Object.keys(load); if(ids.length<2)break;
+    ids.sort((a,b)=>load[a]-load[b]);
+    const lo=ids[0],hi=ids[ids.length-1];
+    if(load[hi]-load[lo]<=5)break;
+    let done=false;
+    outer:
+    for(const {y,m} of fyMonths(curFy)){
+      for(let wd=1;wd<=5;wd++){
+        const dates=slotDates(y,m,wd);
+        if(dates.length===0)continue;
+        const hp=data.people.find(p=>p.id===hi), lp=data.people.find(p=>p.id===lo);
+        if(!hp||!lp)continue;
+        if((lp.gaikin||[]).includes(wd))continue;
+        if(!dates.every(ds=>sched[ds]===hi))continue;
+        if(!dates.every(ds=>availOnDate(lp,ds)))continue;
+        dates.forEach(ds=>sched[ds]=lo);
+        load[hi]-=dates.length; load[lo]+=dates.length; done=true; break outer;
+      }
+    }
+    if(!done)break;
+  }
+  data.schedules[curFy]=sched;
+  saveData(); renderSchedule();
+}
+
+/* ================= 表示 ================= */
+function showTab(t){
+  document.getElementById('pageM').style.display=t==='m'?'':'none';
+  document.getElementById('pageS').style.display=t==='s'?'':'none';
+  document.getElementById('tabM').classList.toggle('on',t==='m');
+  document.getElementById('tabS').classList.toggle('on',t==='s');
+  if(t==='s')renderSchedule();
+}
+function gaikinLabel(g){ return (g&&g.length)?g.map(w=>WD[w]).join('・'):'なし'; }
+function rangeLabel(a,b){ return (a&&b)?`${a.replaceAll('-','/')} 〜 ${b.replaceAll('-','/')}`:'—'; }
+
+function renderPeople(){
+  const tb=document.getElementById('pBody'); tb.innerHTML='';
+  data.people.forEach(p=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><input type="checkbox" ${p.active?'checked':''} onchange="toggleActive('${p.id}',this.checked)"></td>
+      <td style="text-align:left"><span class="dot" style="background:${pColor(p.id)}"></span>${p.name}</td>
+      <td>${gaikinLabel(p.gaikin)}</td>
+      <td>${rangeLabel(p.ic1,p.ic2)}</td>
+      <td>${rangeLabel(p.lab1,p.lab2)}</td>
+      <td>
+        <button class="btn g sm" onclick="editPerson('${p.id}')">編集</button>
+        <button class="btn d sm" onclick="delPerson('${p.id}')">削除</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+  if(data.people.length===0)
+    tb.innerHTML='<tr><td colspan="6" class="muted">まだメンバーが登録されていません。上のフォームから追加してください。</td></tr>';
+}
+function toggleActive(id,v){ const p=data.people.find(x=>x.id===id); if(p){p.active=v; saveData();} }
+
+let editId=null;
+function savePerson(){
+  const name=document.getElementById('pName').value.trim();
+  if(!name){ alert('名前を入力してください。'); return; }
+  const gaikin=[...document.querySelectorAll('#pGaikin input:checked')].map(i=>+i.value);
+  const ic1=document.getElementById('pIc1').value, ic2=document.getElementById('pIc2').value;
+  const lab1=document.getElementById('pLab1').value, lab2=document.getElementById('pLab2').value;
+  if((ic1&&!ic2)||(!ic1&&ic2)||(ic1&&ic2&&ic1>ic2)){ alert('感染制御部ローテの期間を正しく入力してください（開始・終了の両方、開始≦終了）。'); return; }
+  if((lab1&&!lab2)||(!lab1&&lab2)||(lab1&&lab2&&lab1>lab2)){ alert('細菌検査室ローテの期間を正しく入力してください。'); return; }
+  if(editId){
+    const p=data.people.find(x=>x.id===editId);
+    Object.assign(p,{name,gaikin,ic1,ic2,lab1,lab2});
+  }else{
+    data.people.push({id:uid(),name,gaikin,ic1,ic2,lab1,lab2,active:true});
+  }
+  cancelEdit(); saveData(); renderPeople();
+}
+function editPerson(id){
+  const p=data.people.find(x=>x.id===id); if(!p)return;
+  editId=id;
+  document.getElementById('formTitle').textContent='メンバーを編集：'+p.name;
+  document.getElementById('saveBtn').textContent='更新する';
+  document.getElementById('cancelBtn').style.display='';
+  document.getElementById('pName').value=p.name;
+  document.querySelectorAll('#pGaikin input').forEach(i=>{i.checked=(p.gaikin||[]).includes(+i.value); i.parentElement.classList.toggle('checked',i.checked);});
+  document.getElementById('pIc1').value=p.ic1||''; document.getElementById('pIc2').value=p.ic2||'';
+  document.getElementById('pLab1').value=p.lab1||''; document.getElementById('pLab2').value=p.lab2||'';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function cancelEdit(){
+  editId=null;
+  document.getElementById('formTitle').textContent='メンバーを追加';
+  document.getElementById('saveBtn').textContent='追加する';
+  document.getElementById('cancelBtn').style.display='none';
+  document.getElementById('pName').value='';
+  document.querySelectorAll('#pGaikin input').forEach(i=>{i.checked=false;i.parentElement.classList.remove('checked');});
+  ['pIc1','pIc2','pLab1','pLab2'].forEach(id=>document.getElementById(id).value='');
+}
+function delPerson(id){
+  const p=data.people.find(x=>x.id===id);
+  if(!confirm(`「${p.name}」を削除しますか？ 割り当て済みの枠は空欄になります。`))return;
+  data.people=data.people.filter(x=>x.id!==id);
+  Object.values(data.schedules).forEach(s=>{ for(const ds in s) if(s[ds]===id) s[ds]=''; });
+  saveData(); renderAll();
+}
+
+/* ---- 当番表 ---- */
+function onFyChange(){ curFy=+document.getElementById('fySel').value; curMonth={y:curFy,m:4}; renderSchedule(); }
+function renderSchedule(){ renderYear(); renderMonthBtns(); renderCal(); renderStats(); }
+
+function renderYear(){
+  const tb=document.getElementById('yearBody'); tb.innerHTML='';
+  const s=data.schedules[curFy]||{};
+  for(const {y,m} of fyMonths(curFy)){
+    const tds=[1,2,3,4,5].map(wd=>{
+      const dates=slotDates(y,m,wd);
+      const seq=[]; let prev=null;
+      dates.forEach(ds=>{
+        const id=s[ds];
+        const label=(id===undefined||id===null)?'—':(id===''?'—':pName(id));
+        if(label!==prev){seq.push(label);prev=label;}
+      });
+      return `<td>${seq.length?seq.join(' → '):'—'}</td>`;
+    }).join('');
+    tb.innerHTML+=`<tr><th>${y}年${m}月</th>${tds}</tr>`;
+  }
+}
+function renderMonthBtns(){
+  const box=document.getElementById('monthBtns'); box.innerHTML='';
+  fyMonths(curFy).forEach(({y,m})=>{
+    const b=document.createElement('button');
+    b.textContent=`${m}月`;
+    if(curMonth.y===y&&curMonth.m===m)b.classList.add('on');
+    b.onclick=()=>{curMonth={y,m};renderMonthBtns();renderCal();};
+    box.appendChild(b);
+  });
+}
+function renderCal(){
+  const {y,m}=curMonth; const cal=document.getElementById('cal'); cal.innerHTML='';
+  WD.forEach(w=>{const h=document.createElement('div');h.className='h';h.textContent=w;cal.appendChild(h);});
+  const first=new Date(y,m-1,1).getDay(); const last=new Date(y,m,0).getDate();
+  const s=data.schedules[curFy]||{};
+  for(let i=0;i<first;i++){const c=document.createElement('div');c.className='c we';cal.appendChild(c);}
+  for(let d=1;d<=last;d++){
+    const wd=new Date(y,m-1,d).getDay(); const hol=isHoliday(y,m,d);
+    const c=document.createElement('div'); c.className='c';
+    let inner=`<span class="d">${d}</span>`;
+    if(wd===0||wd===6){ c.classList.add('we'); }
+    else if(hol){ c.classList.add('ho'); inner+=`<span class="hn">${hol}</span>`; }
+    else{
+      c.classList.add('wd');
+      const ds=k(y,m,d); const id=s[ds];
+      if(id){ inner+=`<div class="name"><span class="dot" style="background:${pColor(id)}"></span>${pName(id)}</div>`;
+        const p=data.people.find(x=>x.id===id);
+        if(p&&onRotation(p,ds)) inner+=`<div class="out">ローテ期間中!</div>`;
+        if(p&&(p.gaikin||[]).includes(wd)) inner+=`<div class="out">外勤日!</div>`;
+      }
+      else inner+=`<div class="name none">未割当</div>`;
+      c.onclick=()=>openModal(y,m,wd);
+    }
+    c.innerHTML=inner; cal.appendChild(c);
+  }
+}
+function renderStats(){
+  const tb=document.getElementById('statBody'); tb.innerHTML='';
+  const s=data.schedules[curFy]||{}; const cnt={};
+  Object.values(s).forEach(id=>{ if(id)cnt[id]=(cnt[id]||0)+1; });
+  const rows=data.people.filter(p=>p.active||cnt[p.id]);
+  if(rows.length===0){ tb.innerHTML='<tr><td colspan="2" class="muted">まだ割り当てがありません。</td></tr>'; return; }
+  rows.sort((a,b)=>(cnt[b.id]||0)-(cnt[a.id]||0));
+  rows.forEach(p=>{
+    tb.innerHTML+=`<tr><td style="text-align:left"><span class="dot" style="background:${pColor(p.id)}"></span>${p.name}</td><td>${cnt[p.id]||0} 日</td></tr>`;
+  });
+}
+
+/* ---- 手動調整 ---- */
+function optionHtml(sel,ds,wd){
+  let h=`<option value="">（空欄）</option>`;
+  data.people.filter(p=>p.active).forEach(p=>{
+    const flags=[];
+    if((p.gaikin||[]).includes(wd))flags.push('外勤日');
+    if(ds&&onRotation(p,ds))flags.push('ローテ中');
+    h+=`<option value="${p.id}" ${sel===p.id?'selected':''}>${p.name}${flags.length?'（'+flags.join('・')+'）':''}</option>`;
+  });
+  return h;
+}
+function openModal(y,m,wd){
+  modalCtx={y,m,wd,dates:slotDates(y,m,wd)};
+  document.getElementById('mTitle').textContent=`${y}年${m}月の${WD[wd]}曜日の担当を調整`;
+  const s=data.schedules[curFy]||{};
+  document.getElementById('mBulk').innerHTML=`<option value="__">選択して一括変更…</option>`+optionHtml(null,null,wd);
+  const box=document.getElementById('mLines'); box.innerHTML='';
+  modalCtx.dates.forEach(ds=>{
+    const d=+ds.slice(8);
+    box.innerHTML+=`<div class="line"><span class="dt">${m}/${d}（${WD[wd]}）</span>
+      <select data-ds="${ds}">${optionHtml(s[ds]||'',ds,wd)}</select></div>`;
+  });
+  if(modalCtx.dates.length===0)box.innerHTML='<p class="muted">この月に対象の平日がありません。</p>';
+  document.getElementById('ovl').classList.add('show');
+}
+function bulkApply(){
+  const v=document.getElementById('mBulk').value;
+  if(v==='__')return;
+  document.querySelectorAll('#mLines select').forEach(sel=>sel.value=v);
+  document.getElementById('mBulk').value='__';
+}
+function saveModal(){
+  if(!data.schedules[curFy])data.schedules[curFy]={};
+  const s=data.schedules[curFy];
+  document.querySelectorAll('#mLines select').forEach(sel=>{ s[sel.dataset.ds]=sel.value; });
+  saveData(); closeModal(); renderSchedule();
+}
+function closeModal(){ document.getElementById('ovl').classList.remove('show'); modalCtx=null; }
+
+/* ================= 初期化 ================= */
+function renderAll(){ renderPeople(); renderSchedule(); }
+Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleActive,
+  onFyChange,generate,openModal,bulkApply,saveModal,closeModal,reloadNoop:()=>{}});
+
+(async function init(){
+  const g=document.getElementById('pGaikin');
+  [1,2,3,4,5].forEach(w=>{
+    const l=document.createElement('label');
+    l.innerHTML=`<input type="checkbox" value="${w}">${WD[w]}`;
+    l.querySelector('input').addEventListener('change',e=>l.classList.toggle('checked',e.target.checked));
+    g.appendChild(l);
+  });
+  const now=new Date(); const thisFy=now.getMonth()+1>=4?now.getFullYear():now.getFullYear()-1;
+  const sel=document.getElementById('fySel');
+  for(let fy=thisFy-1;fy<=thisFy+3;fy++){
+    const o=document.createElement('option'); o.value=fy; o.textContent=`${fy}年度`;
+    if(fy===thisFy)o.selected=true; sel.appendChild(o);
+  }
+  curFy=thisFy; curMonth={y:thisFy,m:4};
+  await initStore();
+  renderAll();
+  // ホーム画面インストールを可能にするための下準備(サービスワーカー登録)
+  if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} }
+})();
+</script>
+</body>
+</html>
