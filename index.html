@@ -54,7 +54,10 @@
     border-radius:6px;padding:5px 9px;font-size:13.5px;cursor:pointer;user-select:none}
   .wk label.checked{background:var(--blue);border-color:var(--blue);color:#fff}
   .wk input{display:none}
-  .btn{appearance:none;border:none;border-radius:7px;padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn{appearance:none;border:none;border-radius:7px;padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer;
+    white-space:nowrap}
+  /* ボタンを縦に並べる。文字は折り返さず、幅はボタンごとの文字数に合わせる。 */
+  .row>div.btncol{flex:0 0 auto;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
   .btn.p{background:var(--blue);color:#fff}
   .btn.p:hover{background:#175dae}
   .btn.g{background:var(--blue-soft);color:var(--navy);border:1px solid var(--blue-line)}
@@ -184,10 +187,8 @@
         <label class="f">年度（4月〜翌3月）</label>
         <select id="fySel" onchange="onFyChange()"></select>
       </div>
-      <div style="flex:0">
+      <div class="btncol">
         <button class="btn p" onclick="generate()">この年度を自動作成</button>
-      </div>
-      <div style="flex:0">
         <button class="btn d" onclick="clearSchedule()">この年度の割り当てをすべて削除</button>
       </div>
     </div>
