@@ -208,6 +208,10 @@
         <label class="f">年度（4月〜翌3月）</label>
         <select id="fySel" onchange="onFyChange()"></select>
       </div>
+      <div style="flex:0;min-width:150px">
+        <label class="f">作成を始める月</label>
+        <select id="startSel" onchange="onStartChange()"></select>
+      </div>
       <div class="btncol">
         <button class="btn p" onclick="generate()">この年度を自動作成</button>
         <button class="btn d" onclick="clearSchedule()">この年度の割り当てをすべて削除</button>
@@ -239,7 +243,7 @@
   </div>
 
   <div class="card">
-    <h2>担当日数の集計（この年度）</h2>
+    <h2 id="statTitle">担当日数の集計</h2>
     <div class="tblwrap">
     <table>
       <thead><tr><th>名前</th><th>担当日数（コマ数）</th></tr></thead>
@@ -286,9 +290,12 @@ const FIREBASE_CONFIG = {
 /* ================= データ =================
    data = {
      people: [{id,name,gaikin:[1..5],ics:[{s,e},...],lab1,lab2,active:true}],
-     schedules: { "2026": { "2026-04-06":"personId or ''(空欄)" } }
+     schedules: { "2026": { "2026-04-06":"personId or ''(空欄)" } },
+     genStart:  { "2026": 8 }
    }
-   ics = 感染制御部ローテの期間(複数可)。旧形式の ic1/ic2 は読み込み時に変換します。 */
+   ics = 感染制御部ローテの期間(複数可)。旧形式の ic1/ic2 は読み込み時に変換します。
+   genStart = 年度ごとの「作成を始める月」。年度の途中から始める場合に使い、
+              それより前の月は自動作成の対象外・担当日数の集計対象外になります。 */
 const WD=['日','月','火','水','木','金','土'];
 let data={people:[],schedules:{}};
 let curFy, curMonth, modalCtx=null;
@@ -300,9 +307,10 @@ const pad=n=>String(n).padStart(2,'0');
 const k=(y,m,d)=>`${y}-${pad(m)}-${pad(d)}`;
 const setSync=t=>document.getElementById('syncNote').textContent=t;
 
-/* 旧形式(ic1/ic2)を ics 配列へそろえる */
+/* 旧形式(ic1/ic2)を ics 配列へそろえる／不足しているキーを補う */
 function migrate(d){
   d.people=d.people||[]; d.schedules=d.schedules||{};
+  if(!d.genStart)d.genStart={...DEFAULT_GEN_START};   // 初回のみ既定値を入れる
   d.people.forEach(p=>{
     if(!Array.isArray(p.ics)) p.ics=(p.ic1&&p.ic2)?[{s:p.ic1,e:p.ic2}]:[];
     delete p.ic1; delete p.ic2;
@@ -419,26 +427,39 @@ function pName(id){ const p=data.people.find(x=>x.id===id); return p?p.name:'?';
    ・2日連続で担当しない（前日・翌日に当番が入らない）
    ・1人あたり週2回まで
    ・年度内の担当日数をできるだけ均等に（BALANCE_TOL 以内を目指す）
-   ・GEN_START に載っている年度は、その月より前を作成対象から外す（空欄のまま）
+   ・「作成を始める月」より前の月は対象外（空欄のまま・担当日数にも数えない）
    優先順位は 2日連続の回避 > 週2回の上限。人手が足りないときは週3回のほうを先に許容します。 */
-const GEN_START={2026:8};   // 2026年度は4〜7月が実施済みのため8月から作成する
+const DEFAULT_GEN_START={2026:8};  // 初回のみ使う既定値。以後は画面から変更でき、data.genStart に保存されます
 const WEEK_CAP=2;           // 1人あたりの週の担当回数の上限
 const BALANCE_TOL=1;        // 担当日数の「最多−最少」をここまで詰める
 const FY_MIN=2026;          // 年度の選択肢の下限（このアプリの運用開始年度）
 const FY_AHEAD=5;           // 今年度から何年度先まで選べるようにするか
 
+/* この年度の「作成を始める月」。既定は年度のはじめ(4月)。 */
+function fyStartMonth(fy){ return (data.genStart||{})[fy]||4; }
 /* この年度で自動作成の対象にする月 */
 function genMonths(fy){
-  const from=GEN_START[fy]||0;
-  return fyMonths(fy).filter(({y,m})=>y>fy||m>=from);
+  const all=fyMonths(fy);
+  const i=all.findIndex(({m})=>m===fyStartMonth(fy));
+  return i<=0?all:all.slice(i);
 }
+/* 作成対象から外れる月（無ければ空文字） */
+function skippedLabel(fy){
+  const all=fyMonths(fy);
+  const i=all.findIndex(({m})=>m===fyStartMonth(fy));
+  if(i<=0)return '';
+  const a=all[0], b=all[i-1];
+  return `${a.y}年${a.m}月〜${b.y}年${b.m}月`;
+}
+/* 集計・作成の対象になる最初の日付 */
+function genFromDs(fy){ const f=genMonths(fy)[0]; return k(f.y,f.m,1); }
 
 function generate(){
   const members=data.people.filter(p=>p.active);
   if(members.length===0){ alert('当番対象のメンバーがいません。メンバー登録タブでチェックしてください。'); return; }
   const months=genMonths(curFy);
-  const skipped=GEN_START[curFy]
-    ? `（${curFy}年4月〜${curFy}年${GEN_START[curFy]-1}月は対象外です。空欄になります）` : '';
+  const sk=skippedLabel(curFy);
+  const skipped=sk?`\n（${sk}は対象外です。空欄のままになります）`:'';
   if(data.schedules[curFy] && Object.keys(data.schedules[curFy]).length>0){
     if(!confirm(`${curFy}年度の割り当てを作り直します。手動調整も消えます。${skipped}\nよろしいですか？`)) return;
   }
@@ -735,12 +756,28 @@ function delPerson(id){
 
 /* ---- 当番表 ---- */
 function onFyChange(){ curFy=+document.getElementById('fySel').value; curMonth={y:curFy,m:4}; renderSchedule(); }
-function renderSchedule(){ renderGenNote(); renderYear(); renderMonthBtns(); renderCal(); renderStats(); }
+function renderSchedule(){ renderStartSel(); renderGenNote(); renderYear(); renderMonthBtns(); renderCal(); renderStats(); }
 
+function renderStartSel(){
+  const sel=document.getElementById('startSel'); sel.innerHTML='';
+  const from=fyStartMonth(curFy);
+  fyMonths(curFy).forEach(({y,m},i)=>{
+    const o=document.createElement('option');
+    o.value=m; o.textContent=`${y}年${m}月`+(i===0?'（年度のはじめ）':'');
+    if(m===from)o.selected=true;
+    sel.appendChild(o);
+  });
+}
+function onStartChange(){
+  const m=+document.getElementById('startSel').value;
+  (data.genStart||(data.genStart={}))[curFy]=m;
+  saveData(); renderSchedule();
+}
 function renderGenNote(){
-  const from=GEN_START[curFy];
-  document.getElementById('genNote').innerHTML = from
-    ? `※${curFy}年度は<b>${from}月から</b>作成します。${curFy}年4月〜${from-1}月は実施済みのため対象外で、空欄のままになります（担当日数の集計も${from}月以降が対象です）。`
+  const sk=skippedLabel(curFy), from=fyStartMonth(curFy);
+  document.getElementById('genNote').innerHTML = sk
+    ? `※${curFy}年度は<b>${from}月から</b>作成します。${sk}は対象外で、自動作成しても空欄のままです`
+      +`（担当日数の集計も${from}月以降が対象になります）。年度の途中から使い始めた場合などに設定してください。`
     : '';
 }
 
@@ -800,8 +837,12 @@ function renderCal(){
 }
 function renderStats(){
   const tb=document.getElementById('statBody'); tb.innerHTML='';
+  const from=fyStartMonth(curFy), fromDs=genFromDs(curFy);
+  document.getElementById('statTitle').textContent=
+    `担当日数の集計（${curFy}年度`+(from===4?'':`${from}月以降`)+'）';
   const s=data.schedules[curFy]||{}; const cnt={};
-  Object.values(s).forEach(id=>{ if(id)cnt[id]=(cnt[id]||0)+1; });
+  // 「作成を始める月」より前は数えない（均等化の対象と同じ範囲にそろえる）
+  Object.entries(s).forEach(([ds,id])=>{ if(id&&ds>=fromDs)cnt[id]=(cnt[id]||0)+1; });
   const rows=data.people.filter(p=>p.active||cnt[p.id]);
   if(rows.length===0){ tb.innerHTML='<tr><td colspan="2" class="muted">まだ割り当てがありません。</td></tr>'; return; }
   rows.sort((a,b)=>(cnt[b.id]||0)-(cnt[a.id]||0));
@@ -852,7 +893,7 @@ function closeModal(){ document.getElementById('ovl').classList.remove('show'); 
 /* ================= 初期化 ================= */
 function renderAll(){ renderPeople(); renderSchedule(); }
 Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleActive,addIcRow,
-  onFyChange,generate,clearSchedule,openModal,bulkApply,saveModal,closeModal,reloadNoop:()=>{}});
+  onFyChange,onStartChange,generate,clearSchedule,openModal,bulkApply,saveModal,closeModal,reloadNoop:()=>{}});
 
 (async function init(){
   const g=document.getElementById('pGaikin');
@@ -871,6 +912,7 @@ Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleA
     if(fy===cur)o.selected=true; sel.appendChild(o);
   }
   curFy=cur; curMonth={y:cur,m:4};
+  migrate(data);
   await initStore();
   renderAll();
   // ホーム画面インストールを可能にするための下準備(サービスワーカー登録)
