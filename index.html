@@ -36,10 +36,12 @@
   #syncNote{margin-left:auto;font-size:12px;opacity:.85}
   #setupBanner{display:none;background:#fff6e0;border-bottom:1px solid #e8d49a;color:#7a5b00;
     padding:10px 20px;font-size:13px}
-  .tabs{display:flex;gap:0;background:var(--white);border-bottom:2px solid var(--blue-line);padding:0 12px}
+  .tabs{display:flex;gap:0;background:var(--white);border-bottom:2px solid var(--blue-line);padding:0 12px;
+    overflow-x:auto;-webkit-overflow-scrolling:touch}
   .tabs button{appearance:none;border:none;background:none;padding:12px 18px;font-size:15px;font-weight:600;
-    color:var(--sub);cursor:pointer;border-bottom:3px solid transparent}
+    color:var(--sub);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;flex:0 0 auto}
   .tabs button.on{color:var(--navy);border-bottom-color:var(--blue)}
+  @media (max-width:600px){ .tabs{padding:0 6px} .tabs button{padding:12px 11px;font-size:14px} }
   main{max-width:1080px;margin:0 auto;padding:18px 14px 60px}
   .card{background:var(--white);border:1px solid var(--blue-line);border-radius:10px;padding:16px;margin-bottom:18px}
   .card h2{font-size:15px;color:var(--navy);margin-bottom:10px;padding-left:10px;border-left:4px solid var(--blue)}
@@ -127,6 +129,27 @@
   .rules td{text-align:left}
   .rules th{white-space:nowrap}
   .rules .warn{background:var(--hol);border:1px solid #e5b5af;border-radius:8px;padding:11px 13px;margin-bottom:10px}
+  /* フェロー部屋タブ */
+  .froom h3{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--navy);margin:0 0 12px}
+  .froom h3 .no{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--navy);color:#fff;
+    font-size:13px;display:flex;align-items:center;justify-content:center}
+  .froom .step{border:1px solid var(--blue-line);border-radius:8px;padding:11px 13px;margin-bottom:10px;background:#fff}
+  .froom .step>.sh{display:flex;align-items:center;gap:7px;font-weight:700;color:var(--navy);font-size:14px;margin-bottom:6px}
+  .froom .step>.sh .mk{flex:0 0 auto;width:22px;height:22px;border-radius:6px;background:var(--blue-soft);
+    border:1px solid var(--blue-line);color:var(--navy);font-size:13px;display:flex;align-items:center;justify-content:center}
+  .froom ul{margin:0 0 0 20px}
+  .froom li{margin-bottom:4px}
+  .froom li:last-child{margin-bottom:0}
+  .froom p{margin-bottom:8px}
+  .froom .tip{background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:7px;
+    padding:8px 11px;font-size:12.5px;color:var(--navy);margin-top:8px}
+  .froom .warn{background:var(--hol);border:1px solid #e5b5af;border-radius:7px;padding:8px 11px;
+    font-size:12.5px;margin-top:8px}
+  .froom .where{color:var(--sub);font-size:12.5px}
+  .froom table td{text-align:left}
+  .froom .big{background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;
+    padding:12px 14px;font-size:14.5px;margin-bottom:10px}
+  .froom .big b{color:var(--navy)}
   /* 年度の切り替えバー（日中ピッチタブの先頭）。ラベルと選択欄を横並びにして1行に収める。 */
   .fybar{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;padding:9px 16px}
   .fybar>div{flex:0 0 auto;display:flex;align-items:center;gap:10px}
@@ -142,7 +165,7 @@
     html,body{background:#fff}
     header,#setupBanner,.tabs,#ovl,#ovlO,.noprint{display:none!important}
     main{max-width:none;margin:0;padding:0}
-    #pageM,#pageR,#pageO{display:none!important}
+    #pageM,#pageR,#pageO,#pageF{display:none!important}
     #pageS{display:block!important}
     #pageS>.card{display:none}          /* ほかのカードは印刷しない */
     #pageS>#yearCard{display:block;border:none;border-radius:0;padding:0;margin:0}
@@ -168,6 +191,7 @@
 <div class="tabs">
   <button id="tabS" class="on" onclick="showTab('s')">日中ピッチ</button>
   <button id="tabO" onclick="showTab('o')">オンコール</button>
+  <button id="tabF" onclick="showTab('f')">フェロー部屋</button>
   <button id="tabM" onclick="showTab('m')">メンバー登録</button>
   <button id="tabR" onclick="showTab('r')">ルール</button>
 </div>
@@ -378,6 +402,75 @@
       </div>
     </div>
     <textarea id="ocMsg" readonly></textarea>
+  </div>
+</main>
+
+<!-- ============ フェロー部屋 ============ -->
+<main id="pageF" style="display:none">
+  <div class="card froom">
+    <h3><span class="no">1</span>掃除当番</h3>
+    <div class="big">
+      <b>週替わりで1人ずつ</b>担当します（来週から開始）。<br>
+      担当の週のうち、<b>いつ実施してもかまいません</b>。
+    </div>
+  </div>
+
+  <div class="card froom">
+    <h3><span class="no">2</span>掃除の内容・手順</h3>
+
+    <div class="step">
+      <div class="sh"><span class="mk">①</span>掃除機</div>
+      <ul>
+        <li>ざっと全体にかけます。</li>
+        <li class="where">掃除機の置き場所：指導医部屋の印刷機の奥</li>
+      </ul>
+      <div class="warn">入口左の扉は<b>女性ロッカー</b>のため、かけなくてよいです。</div>
+    </div>
+
+    <div class="step">
+      <div class="sh"><span class="mk">②</span>ゴミ出し</div>
+      <ul>
+        <li>シンク横のゴミ箱のゴミを出します。</li>
+        <li>弁当などの<b>生ゴミはエレベーター前まで</b>運びます。</li>
+        <li class="where">ゴミ袋の替え：出入口の棚・下段の引き戸の中</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <div class="sh"><span class="mk">③</span>シンク・排水溝</div>
+      <ul>
+        <li><b>黄色い薄いスポンジ</b>で軽くシンクを洗い、<b>そのまま破棄</b>します。</li>
+        <li>新しい黄色スポンジを出しておきます（<b>週1交換</b>）。</li>
+        <li>排水溝ネットを外し、<b>泡ハイターで数分つけ置き</b>します。</li>
+        <li>排水溝ネットを<b>新品に交換</b>します。</li>
+        <li class="where">物品はすべてシンク下（ペーパータオルの替えも同じ場所）</li>
+      </ul>
+      <div class="tip">食べ物を流すとカビやすいため、つけ置きは毎週おこなってください。</div>
+    </div>
+  </div>
+
+  <div class="card froom">
+    <h3><span class="no">3</span>スポンジの使い分け</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>種類</th><th>用途</th><th>交換頻度</th></tr></thead>
+        <tbody>
+          <tr><td>黄色い薄いスポンジ</td><td>シンク・流し用</td><td>毎週</td></tr>
+          <tr><td>柔らかいスポンジ</td><td>食器用</td><td>汚れてきたタイミング</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tip">取り違え防止のため、それぞれに<b>用途を書いて表示</b>しておきます。</div>
+  </div>
+
+  <div class="card froom">
+    <h3><span class="no">4</span>スクラブの洗濯</h3>
+    <ul>
+      <li>回収は<b>火曜・金曜の午前中</b>です。</li>
+      <li>名前と<b>「33b」</b>を記入します。</li>
+      <li><b>前日の夕方まで</b>に、attending部屋の専用デスクに出しておくことが多いです。</li>
+      <li class="where">スクラブを入れるビニール袋も同じデスクの上にあります。</li>
+    </ul>
   </div>
 </main>
 
@@ -921,7 +1014,7 @@ function clearSchedule(){
 }
 
 /* ================= 表示 ================= */
-const TABS=[['m','pageM','tabM'],['s','pageS','tabS'],['o','pageO','tabO'],['r','pageR','tabR']];
+const TABS=[['m','pageM','tabM'],['s','pageS','tabS'],['o','pageO','tabO'],['f','pageF','tabF'],['r','pageR','tabR']];
 function showTab(t){
   TABS.forEach(([key,page,tab])=>{
     document.getElementById(page).style.display=(t===key)?'':'none';
