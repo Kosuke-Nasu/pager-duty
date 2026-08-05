@@ -127,7 +127,7 @@
   .rules td{text-align:left}
   .rules th{white-space:nowrap}
   .rules .warn{background:var(--hol);border:1px solid #e5b5af;border-radius:8px;padding:11px 13px;margin-bottom:10px}
-  /* 年度の切り替えバー（ピッチ当番タブの先頭）。ラベルと選択欄を横並びにして1行に収める。 */
+  /* 年度の切り替えバー（日中ピッチタブの先頭）。ラベルと選択欄を横並びにして1行に収める。 */
   .fybar{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;padding:9px 16px}
   .fybar>div{flex:0 0 auto;display:flex;align-items:center;gap:10px}
   .fybar label.f{margin-bottom:0;white-space:nowrap}
@@ -166,7 +166,7 @@
 </div>
 
 <div class="tabs">
-  <button id="tabS" class="on" onclick="showTab('s')">ピッチ当番</button>
+  <button id="tabS" class="on" onclick="showTab('s')">日中ピッチ</button>
   <button id="tabO" onclick="showTab('o')">オンコール</button>
   <button id="tabM" onclick="showTab('m')">メンバー登録</button>
   <button id="tabR" onclick="showTab('r')">ルール</button>
@@ -438,7 +438,7 @@
     <h3>6. 年度と「作成を始める月」</h3>
     <ul>
       <li>年度は4月から翌年3月までです。</li>
-      <li>年度の途中から使い始めた場合は、ピッチ当番タブの<b>「作成を始める月」</b>を変えてください。
+      <li>年度の途中から使い始めた場合は、日中ピッチタブの<b>「作成を始める月」</b>を変えてください。
           その月より前は自動作成の対象外（空欄のまま）になり、<b>担当日数の集計にも数えません</b>。</li>
       <li>この設定は年度ごとに保存され、全員の画面で共通です。</li>
     </ul>
@@ -459,7 +459,7 @@
     </div>
 
     <h3>9. 代役ルーレット</h3>
-    <p>担当者が休むときの代役をランダムに選ぶ機能です（ピッチ当番タブ）。1日だけでも、夏休みのような期間でも使えます。</p>
+    <p>担当者が休むときの代役をランダムに選ぶ機能です（日中ピッチタブ）。1日だけでも、夏休みのような期間でも使えます。</p>
     <ul>
       <li><b>1日だけ</b>のときは開始日だけを入れ、終了日は空欄のままにします。
           <b>期間</b>のときは開始日と終了日の両方を入れます。</li>
