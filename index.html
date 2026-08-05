@@ -48,6 +48,8 @@
     border:1px solid var(--blue-line);border-radius:6px;padding:7px 9px;font-size:14px;background:#fff;color:var(--ink);
     max-width:100%}
   input[type=text]{width:100%}
+  textarea{width:100%;border:1px solid var(--blue-line);border-radius:6px;padding:9px 11px;font-size:14px;
+    font-family:inherit;color:var(--ink);background:#fff;min-height:120px;line-height:1.7;resize:vertical}
   .row select{width:100%}   /* 選択肢の文字数で枠からはみ出さないようにする */
   .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
   .row>div{min-width:150px;flex:1}
@@ -89,14 +91,16 @@
   .cal .hn{display:block;font-size:10.5px;color:var(--danger)}
   .cal .none{color:#b6c3d2;font-weight:400}
   .cal .out{margin-top:2px;font-size:10px;color:var(--danger)}
-  #ovl{position:fixed;inset:0;background:rgba(14,58,107,.45);display:none;align-items:flex-start;justify-content:center;
+  #ovl,#ovlO{position:fixed;inset:0;background:rgba(14,58,107,.45);display:none;align-items:flex-start;justify-content:center;
     padding:40px 12px;z-index:50;overflow:auto}
-  #ovl.show{display:flex}
-  #modal{background:#fff;border-radius:10px;max-width:480px;width:100%;padding:18px}
-  #modal h3{font-size:15px;color:var(--navy);margin-bottom:10px}
-  #modal .line{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:14px}
-  #modal .line .dt{width:110px;color:var(--sub);font-size:13px}
-  #modal select{flex:1}
+  #ovl.show,#ovlO.show{display:flex}
+  #modal,#modalO{background:#fff;border-radius:10px;max-width:480px;width:100%;padding:18px}
+  #modal h3,#modalO h3{font-size:15px;color:var(--navy);margin-bottom:10px}
+  #modal .line,#modalO .line{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:14px}
+  #modal .line .dt,#modalO .line .dt{width:110px;color:var(--sub);font-size:13px}
+  #modal select,#modalO select{flex:1}
+  .pinlb{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--sub);
+    white-space:nowrap;cursor:pointer;user-select:none}
   .icrow{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap}
   .icrow .tl{color:var(--sub);font-size:13px}
   .note{background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;padding:10px 12px;
@@ -107,7 +111,7 @@
     border-radius:6px;padding:5px 9px;font-size:13.5px;cursor:pointer;user-select:none}
   .rlp label.off{background:#f3f4f6;border-color:#e0e4e9;color:#9aa7b4}
   .rlp label.ng{background:#f7f8fa;border-style:dashed;color:#aab4c0;cursor:not-allowed}
-  .rlp .why{font-size:11.5px;color:var(--danger)}
+  .why{font-size:11.5px;color:var(--danger)}
   .rlp label.ng .why{color:#aab4c0}
   #rlResult{margin-top:12px;min-height:52px;display:flex;align-items:center;justify-content:center;gap:6px;
     background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;padding:12px;
@@ -123,7 +127,7 @@
   .rules td{text-align:left}
   .rules th{white-space:nowrap}
   .rules .warn{background:var(--hol);border:1px solid #e5b5af;border-radius:8px;padding:11px 13px;margin-bottom:10px}
-  /* 年度の切り替えバー（当番表タブの先頭）。ラベルと選択欄を横並びにして1行に収める。 */
+  /* 年度の切り替えバー（ピッチ当番タブの先頭）。ラベルと選択欄を横並びにして1行に収める。 */
   .fybar{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;padding:9px 16px}
   .fybar>div{flex:0 0 auto;display:flex;align-items:center;gap:10px}
   .fybar label.f{margin-bottom:0;white-space:nowrap}
@@ -136,9 +140,9 @@
   @media print{
     @page{size:A4 portrait;margin:12mm}
     html,body{background:#fff}
-    header,#setupBanner,.tabs,#ovl,.noprint{display:none!important}
+    header,#setupBanner,.tabs,#ovl,#ovlO,.noprint{display:none!important}
     main{max-width:none;margin:0;padding:0}
-    #pageM,#pageR{display:none!important}
+    #pageM,#pageR,#pageO{display:none!important}
     #pageS{display:block!important}
     #pageS>.card{display:none}          /* ほかのカードは印刷しない */
     #pageS>#yearCard{display:block;border:none;border-radius:0;padding:0;margin:0}
@@ -162,7 +166,8 @@
 </div>
 
 <div class="tabs">
-  <button id="tabS" class="on" onclick="showTab('s')">当番表</button>
+  <button id="tabS" class="on" onclick="showTab('s')">ピッチ当番</button>
+  <button id="tabO" onclick="showTab('o')">オンコール</button>
   <button id="tabM" onclick="showTab('m')">メンバー登録</button>
   <button id="tabR" onclick="showTab('r')">ルール</button>
 </div>
@@ -215,11 +220,11 @@
   </div>
 
   <div class="card">
-    <h2>メンバー一覧（当番に入れる人にチェック）</h2>
+    <h2>メンバー一覧（ピッチ担当・オンコールそれぞれ、当番に入れる人にチェック）</h2>
     <div class="tblwrap">
     <table id="pTable">
       <thead><tr>
-        <th>当番対象</th><th>名前</th><th>外勤日</th><th>感染制御部ローテ</th><th>細菌検査室ローテ</th><th></th>
+        <th>ピッチ担当</th><th>オンコール</th><th>名前</th><th>外勤日</th><th>感染制御部ローテ</th><th>細菌検査室ローテ</th><th></th>
       </tr></thead>
       <tbody id="pBody"></tbody>
     </table>
@@ -312,6 +317,70 @@
   </div>
 </main>
 
+<!-- ============ オンコール表 ============ -->
+<main id="pageO" style="display:none">
+  <div class="card fybar">
+    <div>
+      <label class="f">年度（4月〜翌3月）</label>
+      <select id="ocFySel" onchange="onOcFyChange()"></select>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>月表示（日付をタップするとその月の担当を変更できます）</h2>
+    <div class="months" id="ocMonthBtns"></div>
+    <div class="cal" id="ocCal"></div>
+  </div>
+
+  <div class="card">
+    <h2>年間一覧（各月の曜日担当）</h2>
+    <div class="tblwrap">
+    <table>
+      <thead><tr><th>月</th><th>月曜</th><th>火曜</th><th>水曜</th><th>木曜</th><th>金曜</th><th></th></tr></thead>
+      <tbody id="ocYearBody"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>自動作成（基準月から曜日をひとつずつ後ろへずらす）</h2>
+    <p class="muted" style="margin-bottom:10px">
+      基準にする月の担当をもとに、翌月以降は全員をひとつ後ろの曜日（月→火、火→水、…、金→月）へずらして、
+      年度末（3月）まで自動で埋めます。月×曜日の編集画面で<b>「固定」</b>にした曜日の人は動かさず、
+      残りの人だけが残りの曜日の中で順にずれます。ずらした先が外勤日に当たる人はさらにもうひとつ後ろの曜日へ飛ばし、
+      押し出された人が空いた曜日に入ります。基準月の担当は、先に月表示（または年間一覧の「編集」）から入力してください。
+    </p>
+    <div class="row" style="margin-bottom:0">
+      <div style="flex:0;min-width:180px">
+        <label class="f">基準にする月</label>
+        <select id="ocBaseSel"></select>
+      </div>
+      <div class="btncol">
+        <button class="btn p" onclick="ocFill()">基準月より後を自動で埋める</button>
+        <button class="btn d" onclick="ocClear()">この年度のオンコールをすべて削除</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>医局秘書への連絡メッセージ</h2>
+    <div class="row">
+      <div style="flex:0;min-width:180px">
+        <label class="f">宛名（「さん」は自動で付きます）</label>
+        <input type="text" id="ocTo" placeholder="例）佐藤" oninput="ocRenderMsg()" onchange="ocToChanged()">
+      </div>
+      <div style="flex:0;min-width:150px">
+        <label class="f">月</label>
+        <select id="ocMsgSel" onchange="ocRenderMsg()"></select>
+      </div>
+      <div class="btncol">
+        <button class="btn g" id="ocCopyBtn" onclick="ocCopyMsg()">メッセージをコピー</button>
+      </div>
+    </div>
+    <textarea id="ocMsg" readonly></textarea>
+  </div>
+</main>
+
 <!-- ============ ルール ============ -->
 <main id="pageR" style="display:none">
   <div class="card rules">
@@ -331,7 +400,7 @@
         <tr><th>外勤日</th><td>登録した曜日には当番を入れません。</td></tr>
         <tr><th>感染制御部ローテ</th><td>登録したすべての期間中は当番を入れません。</td></tr>
         <tr><th>細菌検査室ローテ</th><td>登録した期間中は当番を入れません。</td></tr>
-        <tr><th>当番対象</th><td>メンバー一覧でチェックの無い人には割り当てません。</td></tr>
+        <tr><th>当番対象</th><td>メンバー一覧で「ピッチ担当」にチェックの無い人には割り当てません。</td></tr>
       </table>
     </div>
     <p>条件を満たす人が1人もいない日は<b>未割当（空欄）</b>にして、作成後にその件数をお知らせします。</p>
@@ -369,7 +438,7 @@
     <h3>6. 年度と「作成を始める月」</h3>
     <ul>
       <li>年度は4月から翌年3月までです。</li>
-      <li>年度の途中から使い始めた場合は、当番表タブの<b>「作成を始める月」</b>を変えてください。
+      <li>年度の途中から使い始めた場合は、ピッチ当番タブの<b>「作成を始める月」</b>を変えてください。
           その月より前は自動作成の対象外（空欄のまま）になり、<b>担当日数の集計にも数えません</b>。</li>
       <li>この設定は年度ごとに保存され、全員の画面で共通です。</li>
     </ul>
@@ -390,7 +459,7 @@
     </div>
 
     <h3>9. 代役ルーレット</h3>
-    <p>担当者が休むときの代役をランダムに選ぶ機能です（当番表タブ）。1日だけでも、夏休みのような期間でも使えます。</p>
+    <p>担当者が休むときの代役をランダムに選ぶ機能です（ピッチ当番タブ）。1日だけでも、夏休みのような期間でも使えます。</p>
     <ul>
       <li><b>1日だけ</b>のときは開始日だけを入れ、終了日は空欄のままにします。
           <b>期間</b>のときは開始日と終了日の両方を入れます。</li>
@@ -414,7 +483,24 @@
       <li>年間一覧は「印刷 / PDF保存」ボタンからA4縦で印刷できます。</li>
     </ul>
 
-    <h3>11. データの取り扱い</h3>
+    <h3>11. オンコール表</h3>
+    <ul>
+      <li>ピッチ当番とは別に、<b>平日の各曜日に1人ずつ</b>「その月のオンコール当番」を決めます（オンコールタブ）。</li>
+      <li>担当できる人は、メンバー登録タブの<b>「オンコール」列のチェック</b>で決めます。ピッチ担当と違っていて構いません。</li>
+      <li><b>外勤日の曜日は担当できません</b>。いっぽう感染制御部・細菌検査室ローテ中でも<b>オンコールは担当できます</b>（ピッチ当番と違い、制約にしません）。</li>
+      <li>5人以上いる場合は一人1曜日、<b>4人以下の場合は一人1〜2曜日</b>を担当します（月×曜日のモーダルの「ランダムに割り当てる」で自動配分できます）。</li>
+      <li>月替わりのタイミングで、<b>全員がひとつ後ろの曜日</b>にずれます（月→火、火→水、…、金→月）。</li>
+      <li>月×曜日の編集画面で<b>「固定」</b>にチェックした曜日は、その人が動かずに毎月同じ曜日を担当し続けます。
+          残りの人は、固定された曜日を飛ばして、残りの曜日の中で順に後ろへずれます（例：水曜を固定した場合、火曜の人は木曜へ）。</li>
+      <li>ずらした先が<b>外勤日に当たる人は、さらにもうひとつ後ろの曜日</b>へ飛ばします（例：水曜の人は、木曜が外勤日なら金曜へ）。
+          飛ばした先にいた人（押し出された人）は、空いた曜日に入ります。それも外勤日で入れない場合は、全体のずれが最小になる組み合わせを選びます。</li>
+      <li>「基準にする月」を選んで<b>「基準月より後を自動で埋める」</b>を押すと、その月の担当をもとに年度末（3月）まで上のルールで自動作成します。基準月の担当は、月表示の日付タップか年間一覧の「編集」から手動で入力・調整できます。</li>
+      <li>自動作成は<b>そのとき登録されている外勤日</b>で計算します。外勤日を変えたり、メンバーが入れ替わったりした場合は、変わった月の担当を手動で直し、その月を基準にして自動作成をやり直してください。</li>
+      <li>手動調整（モーダル）では外勤日の人も選べますが、選択肢とカレンダー・年間一覧に「外勤日」の注記が出ます。</li>
+      <li>医局秘書への連絡用メッセージを自動で作成できます（宛名と月を選んで「メッセージをコピー」）。担当が「未定」の曜日は「未定」と入るので、送る前に埋めてください。</li>
+    </ul>
+
+    <h3>12. データの取り扱い</h3>
     <div class="warn">
       このアプリのデータはFirebase（インターネット上のデータ保存サービス）に保存され、
       <b>このページのURLを知っている人は誰でも同じ内容を見て編集できます</b>。ログインはありません。<br>
@@ -437,6 +523,21 @@
     <div class="row" style="margin-top:14px;margin-bottom:0">
       <div style="flex:0"><button class="btn p" onclick="saveModal()">保存する</button></div>
       <div style="flex:0"><button class="btn g" onclick="closeModal()">閉じる</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ オンコール調整モーダル ============ -->
+<div id="ovlO" onclick="if(event.target===this)closeOcModal()">
+  <div id="modalO">
+    <h3 id="oTitle"></h3>
+    <div id="oLines"></div>
+    <div class="row" style="margin-top:10px;margin-bottom:0">
+      <div style="flex:0"><button class="btn g sm" onclick="ocAutoAssign()">この月をランダムに割り当てる</button></div>
+    </div>
+    <div class="row" style="margin-top:14px;margin-bottom:0">
+      <div style="flex:0"><button class="btn p" onclick="saveOcModal()">保存する</button></div>
+      <div style="flex:0"><button class="btn g" onclick="closeOcModal()">閉じる</button></div>
     </div>
   </div>
 </div>
@@ -483,9 +584,12 @@ const setSync=t=>document.getElementById('syncNote').textContent=t;
 function migrate(d){
   d.people=d.people||[]; d.schedules=d.schedules||{};
   if(!d.genStart)d.genStart={...DEFAULT_GEN_START};   // 初回のみ既定値を入れる
+  if(!d.oncall)d.oncall={};                           // オンコール表 { 年度: { "2026-4": {1:id,...,5:id} } }
+  if(d.ocTo===undefined)d.ocTo='';                    // 秘書向けメッセージの宛名
   d.people.forEach(p=>{
     if(!Array.isArray(p.ics)) p.ics=(p.ic1&&p.ic2)?[{s:p.ic1,e:p.ic2}]:[];
     delete p.ic1; delete p.ic2;
+    if(p.oncall===undefined)p.oncall=!!p.active;      // 追加当初はピッチ担当と同じにしておく
   });
   return d;
 }
@@ -513,7 +617,8 @@ async function initStore(){
     const remote=snap.data().json;
     if(remote&&remote!==lastSavedJson){
       data=migrate(JSON.parse(remote)); lastSavedJson=remote;
-      if(!document.getElementById('ovl').classList.contains('show')) renderAll();
+      if(!document.getElementById('ovl').classList.contains('show')
+        &&!document.getElementById('ovlO').classList.contains('show')) renderAll();
       setSync('更新を反映 '+new Date().toLocaleTimeString('ja-JP'));
     }
   });
@@ -816,13 +921,14 @@ function clearSchedule(){
 }
 
 /* ================= 表示 ================= */
-const TABS=[['m','pageM','tabM'],['s','pageS','tabS'],['r','pageR','tabR']];
+const TABS=[['m','pageM','tabM'],['s','pageS','tabS'],['o','pageO','tabO'],['r','pageR','tabR']];
 function showTab(t){
   TABS.forEach(([key,page,tab])=>{
     document.getElementById(page).style.display=(t===key)?'':'none';
     document.getElementById(tab).classList.toggle('on',t===key);
   });
   if(t==='s')renderSchedule();
+  if(t==='o')renderOncall();
   if(t==='r')renderRules();
   window.scrollTo({top:0});
 }
@@ -848,6 +954,7 @@ function renderPeople(){
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td><input type="checkbox" ${p.active?'checked':''} onchange="toggleActive('${p.id}',this.checked)"></td>
+      <td><input type="checkbox" ${p.oncall?'checked':''} onchange="toggleOncall('${p.id}',this.checked)"></td>
       <td style="text-align:left"><span class="dot" style="background:${pColor(p.id)}"></span>${p.name}</td>
       <td>${gaikinLabel(p.gaikin)}</td>
       <td>${icLabel(p)}</td>
@@ -859,9 +966,10 @@ function renderPeople(){
     tb.appendChild(tr);
   });
   if(data.people.length===0)
-    tb.innerHTML='<tr><td colspan="6" class="muted">まだメンバーが登録されていません。上のフォームから追加してください。</td></tr>';
+    tb.innerHTML='<tr><td colspan="7" class="muted">まだメンバーが登録されていません。上のフォームから追加してください。</td></tr>';
 }
 function toggleActive(id,v){ const p=data.people.find(x=>x.id===id); if(p){p.active=v; saveData();} }
+function toggleOncall(id,v){ const p=data.people.find(x=>x.id===id); if(p){p.oncall=v; saveData();} }
 
 let editId=null;
 
@@ -938,6 +1046,9 @@ function delPerson(id){
   if(!confirm(`「${p.name}」を削除しますか？ 割り当て済みの枠は空欄になります。`))return;
   data.people=data.people.filter(x=>x.id!==id);
   Object.values(data.schedules).forEach(s=>{ for(const ds in s) if(s[ds]===id) s[ds]=''; });
+  Object.values(data.oncall||{}).forEach(fyMap=>Object.values(fyMap).forEach(mm=>{
+    for(const w in mm) if(mm[w]===id) mm[w]='';
+  }));
   saveData(); renderAll();
 }
 
@@ -949,7 +1060,14 @@ function defaultMonth(fy){
   const f=genMonths(fy)[0];
   return{y:f.y,m:f.m};
 }
-function onFyChange(){ curFy=+document.getElementById('fySel').value; curMonth=defaultMonth(curFy); renderSchedule(); }
+/* 年度は当番表・オンコール表で共通。どちらの選択欄を変えてももう一方に反映する。 */
+function setFy(fy){
+  curFy=fy; curMonth=defaultMonth(fy); ocMonth=ocDefaultMonth(fy);
+  document.getElementById('fySel').value=fy;
+  document.getElementById('ocFySel').value=fy;
+}
+function onFyChange(){ setFy(+document.getElementById('fySel').value); renderSchedule(); }
+function onOcFyChange(){ setFy(+document.getElementById('ocFySel').value); renderOncall(); }
 function renderSchedule(){ renderStartSel(); renderYear(); renderMonthBtns(); renderCal(); renderStats(); renderRoulette(); }
 
 function renderStartSel(){
@@ -1200,6 +1318,307 @@ function applyRoulette(){
   saveData(); renderSchedule();
 }
 
+/* ================= オンコール表 =================
+   平日の各曜日に1人ずつ、月ごとに決める当番（ピッチ当番とは別）。
+   data.oncall = { 年度: { "2026-4": {1:personId,...,5:personId} } }
+   翌月は全員がひとつ後ろの曜日にずれる（月→火、火→水、…、金→月）。 */
+let ocMonth, ocCtx=null;
+const ocKeyOf=(y,m)=>`${y}-${m}`;
+function ocGet(fy,y,m){ return ((data.oncall||{})[fy]||{})[ocKeyOf(y,m)]||{}; }
+function ocSet(fy,y,m,v){
+  if(!data.oncall)data.oncall={};
+  if(!data.oncall[fy])data.oncall[fy]={};
+  data.oncall[fy][ocKeyOf(y,m)]=v;
+}
+function ocHasAny(fy,y,m){ const a=ocGet(fy,y,m); return [1,2,3,4,5].some(w=>a[w]); }
+/* オンコール表で最初に開く月。今年度なら今月、ほかの年度なら4月。 */
+function ocDefaultMonth(fy){
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth()+1;
+  return fy===(m>=4?y:y-1)?{y,m}:{y:fy,m:4};
+}
+
+function renderOncall(){
+  document.getElementById('ocFySel').value=curFy;
+  renderOcMonthBtns(); renderOcCal(); renderOcYear();
+  renderOcBaseSel(); renderOcMsgSel();
+  const to=document.getElementById('ocTo');
+  if(document.activeElement!==to)to.value=data.ocTo||'';
+  ocRenderMsg();
+}
+function renderOcMonthBtns(){
+  const box=document.getElementById('ocMonthBtns'); box.innerHTML='';
+  fyMonths(curFy).forEach(({y,m})=>{
+    const b=document.createElement('button');
+    b.textContent=`${m}月`;
+    if(ocMonth.y===y&&ocMonth.m===m)b.classList.add('on');
+    b.onclick=()=>{ocMonth={y,m};renderOcMonthBtns();renderOcCal();};
+    box.appendChild(b);
+  });
+}
+function renderOcCal(){
+  const {y,m}=ocMonth; const cal=document.getElementById('ocCal'); cal.innerHTML='';
+  CAL_ORDER.forEach(w=>{const h=document.createElement('div');h.className='h';h.textContent=WD[w];cal.appendChild(h);});
+  const last=new Date(y,m,0).getDate();
+  let lead=0;
+  for(let d=1;d<=last;d++){
+    const wd=new Date(y,m-1,d).getDay();
+    if(wd>=1&&wd<=5){ lead=wd-1; break; }
+  }
+  const a=ocGet(curFy,y,m);
+  const pins=ocPins(a);
+  for(let i=0;i<lead;i++){const c=document.createElement('div');c.className='c we';cal.appendChild(c);}
+  for(let d=1;d<=last;d++){
+    const wd=new Date(y,m-1,d).getDay(); const hol=isHoliday(y,m,d);
+    if(wd===0||wd===6)continue;
+    const c=document.createElement('div'); c.className='c';
+    let inner=`<span class="d">${d}</span>`;
+    if(hol){ c.classList.add('ho'); inner+=`<span class="hn">${hol}</span>`; }
+    else{
+      c.classList.add('wd');
+      const id=a[wd];
+      if(id){
+        inner+=`<div class="name"><span class="dot" style="background:${pColor(id)}"></span>${pName(id)}</div>`;
+        const p=data.people.find(x=>x.id===id);
+        if(p&&!p.oncall)inner+=`<div class="out">オンコール対象外!</div>`;
+        if(p&&(p.gaikin||[]).includes(wd))inner+=`<div class="out">外勤日!</div>`;
+      }
+      else inner+=`<div class="name none">未定</div>`;
+      if(pins.includes(wd))inner+=`<div class="muted" style="font-size:10px">固定</div>`;
+      c.onclick=()=>openOcModal(y,m);
+    }
+    c.innerHTML=inner; cal.appendChild(c);
+  }
+}
+function renderOcYear(){
+  const tb=document.getElementById('ocYearBody'); tb.innerHTML='';
+  for(const {y,m} of fyMonths(curFy)){
+    const a=ocGet(curFy,y,m);
+    const pins=ocPins(a);
+    const tds=[1,2,3,4,5].map(wd=>{
+      const pin=pins.includes(wd)?'<span class="muted">（固定）</span>':'';
+      if(!a[wd])return `<td>—${pin}</td>`;
+      const p=data.people.find(x=>x.id===a[wd]);
+      const flags=[];
+      if(p&&!p.oncall)flags.push('対象外');
+      if(p&&(p.gaikin||[]).includes(wd))flags.push('外勤');
+      const warn=flags.length?`<span class="why">（${flags.join('・')}）</span>`:'';
+      return `<td>${pName(a[wd])}${pin}${warn}</td>`;
+    }).join('');
+    tb.innerHTML+=`<tr><th>${y}年${m}月</th>${tds}`
+      +`<td><button class="btn g sm" onclick="openOcModal(${y},${m})">編集</button></td></tr>`;
+  }
+}
+/* 月の選択欄を年度の12か月で埋める（できるだけ前の選択を保つ） */
+function ocFillMonthSel(id,def){
+  const sel=document.getElementById(id); const keep=sel.value;
+  sel.innerHTML='';
+  fyMonths(curFy).forEach(({y,m})=>{
+    const o=document.createElement('option');
+    o.value=ocKeyOf(y,m); o.textContent=`${y}年${m}月`;
+    sel.appendChild(o);
+  });
+  if(keep&&[...sel.options].some(o=>o.value===keep))sel.value=keep;
+  else if(def)sel.value=def;
+}
+function renderOcBaseSel(){
+  const first=fyMonths(curFy).find(({y,m})=>ocHasAny(curFy,y,m));
+  ocFillMonthSel('ocBaseSel', first?ocKeyOf(first.y,first.m):ocKeyOf(curFy,4));
+}
+function renderOcMsgSel(){ ocFillMonthSel('ocMsgSel', ocKeyOf(ocMonth.y,ocMonth.m)); }
+
+/* ---- 手動調整（月×曜日のモーダル） ---- */
+function ocOptionHtml(sel,wd){
+  let h='<option value="">（未定）</option>';
+  data.people.forEach(p=>{
+    if(!p.oncall&&p.id!==sel)return;   // 対象外の人は、すでに割り当て済みの場合だけ表示する
+    const flags=[];
+    if(!p.oncall)flags.push('オンコール対象外');
+    if((p.gaikin||[]).includes(wd))flags.push('外勤日');
+    h+=`<option value="${p.id}" ${sel===p.id?'selected':''}>${p.name}${flags.length?'（'+flags.join('・')+'）':''}</option>`;
+  });
+  return h;
+}
+function openOcModal(y,m){
+  ocCtx={y,m};
+  document.getElementById('oTitle').textContent=`${y}年${m}月のオンコール担当`;
+  const a=ocGet(curFy,y,m);
+  const pins=ocPins(a);
+  const box=document.getElementById('oLines'); box.innerHTML='';
+  for(let wd=1;wd<=5;wd++){
+    box.innerHTML+=`<div class="line"><span class="dt">${WD[wd]}曜日</span>
+      <select data-wd="${wd}">${ocOptionHtml(a[wd]||'',wd)}</select>
+      <label class="pinlb"><input type="checkbox" class="pinCk" data-wd="${wd}" ${pins.includes(wd)?'checked':''}>固定</label></div>`;
+  }
+  document.getElementById('ovlO').classList.add('show');
+}
+/* モーダル内のランダム割り当て。5人以上なら一人1曜日、4人以下なら一人2曜日まで。
+   外勤日の曜日には割り当てない。「固定」にチェックした曜日はいまの担当のまま動かさない。
+   できるだけ多くの曜日を埋め、人が偏らない組み合わせを選ぶ。 */
+function ocAutoAssign(){
+  const pool=data.people.filter(p=>p.oncall);
+  if(pool.length===0){ alert('オンコールを担当できるメンバーがいません。\nメンバー登録タブで「オンコール」にチェックしてください。'); return; }
+  const sels={};
+  document.querySelectorAll('#oLines select').forEach(sel=>{ sels[+sel.dataset.wd]=sel; });
+  const pinned=new Set([...document.querySelectorAll('#oLines .pinCk:checked')].map(ck=>+ck.dataset.wd));
+  const free=[1,2,3,4,5].filter(w=>!pinned.has(w));
+  if(free.length===0){ alert('すべての曜日が「固定」のため、割り当てる曜日がありません。'); return; }
+  const order=pool.slice();
+  for(let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; }
+  const maxPer=order.length>=5?1:2;
+  const cnt0={};
+  pinned.forEach(w=>{ const id=sels[w].value; if(id)cnt0[id]=(cnt0[id]||0)+1; });   // 固定分も回数に数える
+  const optScore=free.length*100+Math.min(free.length,order.length)*10;
+  let best=null,bestScore=-1;
+  (function go(i,cnt,cur){
+    if(bestScore>=optScore)return;
+    if(i>=free.length){
+      const filled=cur.filter(v=>v).length;
+      const used=new Set(cur.filter(v=>v)).size;
+      const score=filled*100+used*10;
+      if(score>bestScore){ bestScore=score; best=cur.slice(); }
+      return;
+    }
+    const slot=free[i];
+    for(const p of order){
+      if((cnt[p.id]||0)>=maxPer)continue;
+      if((p.gaikin||[]).includes(slot))continue;
+      cnt[p.id]=(cnt[p.id]||0)+1; cur.push(p.id);
+      go(i+1,cnt,cur);
+      cnt[p.id]--; cur.pop();
+    }
+    cur.push(''); go(i+1,cnt,cur); cur.pop();
+  })(0,cnt0,[]);
+  free.forEach((w,i)=>{ sels[w].value=best[i]||''; });
+  const miss=best.filter(v=>!v).length;
+  if(miss)alert(`外勤日と人数の関係で埋められない曜日が ${miss} 曜日あります（未定のままにしました）。`);
+}
+function saveOcModal(){
+  if(!ocCtx)return;
+  const v={};
+  document.querySelectorAll('#oLines select').forEach(sel=>{ v[+sel.dataset.wd]=sel.value; });
+  const pin=[...document.querySelectorAll('#oLines .pinCk:checked')].map(ck=>+ck.dataset.wd);
+  if(pin.length)v.pin=pin;
+  ocSet(curFy,ocCtx.y,ocCtx.m,v);
+  saveData(); closeOcModal(); renderOncall();
+}
+function closeOcModal(){ document.getElementById('ovlO').classList.remove('show'); ocCtx=null; }
+
+/* ---- 自動作成：基準月の担当を、月替わりごとにひとつ後ろの曜日へずらす ----
+   ・全員がひとつ後ろの曜日へ移る（月→火、火→水、…、金→月）。
+   ・「固定」にした曜日の人は動かさず、残りの人だけが残りの曜日の中で順にずれる。
+   ・ずらした先がその人の外勤日なら、さらに後ろの曜日へ飛ばす（例：水→木が外勤なら水→金）。
+   ・飛ばされた人に押し出された人は、空いた曜日（飛ばされた曜日）に入る。
+     それも外勤日で入れない場合は、全体のズレが最小になる組み合わせを選ぶ。
+   ・感染制御部・細菌検査室ローテ中でもオンコールは担当できる（制約にしない）。
+   ・どうしても置けない曜日は「未定」にして件数をお知らせする。 */
+function ocGaikinNg(id,wd){
+  const p=data.people.find(x=>x.id===id);
+  return !!(p&&(p.gaikin||[]).includes(wd));
+}
+/* その月の「固定」曜日の一覧 */
+function ocPins(map){ return (map&&Array.isArray(map.pin))?map.pin.filter(w=>w>=1&&w<=5):[]; }
+/* 前月の割り当て prev から翌月の割り当てを作る。戻り値 {map, blank} */
+function ocShiftMonth(prev){
+  const pins=ocPins(prev);
+  const ring=[1,2,3,4,5].filter(w=>!pins.includes(w));   // 回転に参加する曜日（固定を除く）
+  const L=ring.length;
+  const map={}; let blank=0;
+  pins.forEach(w=>{ map[w]=prev[w]||''; });
+  if(pins.length)map.pin=pins.slice();
+  if(L===0)return {map,blank};
+  const pos={}; ring.forEach((w,i)=>pos[w]=i);
+  const tokens=ring.map(w=>({id:prev[w]||'',ideal:ring[(pos[w]+1)%L]}));
+  const fwdSteps=(ideal,slot)=>(pos[slot]-pos[ideal]+L)%L;   // 理想の曜日から、さらに後ろへ何回ずらしたか
+  const cost=(t,slot)=>{
+    if(!t.id)return fwdSteps(t.ideal,slot)?1:0;     // 空欄の枠もいっしょに回す
+    if(ocGaikinNg(t.id,slot))return Infinity;       // 外勤日には置けない（必ず守る）
+    const f=fwdSteps(t.ideal,slot);
+    if(ocGaikinNg(t.id,t.ideal))return f*10;        // 外勤日で飛ばされる人は「さらに後ろへ」を最優先
+    return Math.min(f,L-f)+(f*2>L?0.25:0);          // 押し出された人はズレ最小（後ろ寄りを優先）
+  };
+  let best=null,bestCost=Infinity;
+  (function go(i,used,cur,acc){
+    if(acc>=bestCost)return;
+    if(i>=L){ best=cur.slice(); bestCost=acc; return; }
+    const slot=ring[i];
+    for(let t=0;t<L;t++){
+      if(used[t])continue;
+      const c=cost(tokens[t],slot);
+      if(c===Infinity)continue;
+      used[t]=true; cur.push(tokens[t].id);
+      go(i+1,used,cur,acc+c);
+      used[t]=false; cur.pop();
+    }
+    cur.push(null); go(i+1,used,cur,acc+100); cur.pop();   // 誰も置けないときは未定
+  })(0,new Array(L).fill(false),[],0);
+  best.forEach((id,i)=>{
+    map[ring[i]]=id===null?'':id;
+    if(id===null)blank++;
+  });
+  return {map,blank};
+}
+function ocFill(){
+  const [by,bm]=document.getElementById('ocBaseSel').value.split('-').map(Number);
+  const months=fyMonths(curFy);
+  const bi=months.findIndex(({y,m})=>y===by&&m===bm);
+  if(bi<0)return;
+  let prev=ocGet(curFy,by,bm);
+  if(![1,2,3,4,5].some(w=>prev[w])){
+    alert(`${by}年${bm}月の担当がまだ入力されていません。\n先に月表示（または年間一覧の「編集」）から基準月の担当を入力してください。`);
+    return;
+  }
+  if(bi===months.length-1){ alert('基準月が年度の最後の月（3月）のため、埋める月がありません。'); return; }
+  const rest=months.slice(bi+1);
+  if(rest.some(({y,m})=>ocHasAny(curFy,y,m))){
+    if(!confirm(`${by}年${bm}月より後の月の担当は上書きされます。\nよろしいですか？`))return;
+  }
+  let blanks=0;
+  for(const {y,m} of rest){
+    const r=ocShiftMonth(prev);
+    ocSet(curFy,y,m,r.map); blanks+=r.blank; prev=r.map;
+  }
+  saveData(); renderOncall();
+  alert(`${by}年${bm}月を基準に、${rest[0].y}年${rest[0].m}月から年度末までを自動で埋めました。`
+    +(blanks?`\n\n※外勤日の関係で置けず「未定」にした曜日が ${blanks} 件あります。月表示から手動で調整してください。`:''));
+}
+function ocClear(){
+  const map=(data.oncall||{})[curFy]||{};
+  const n=Object.values(map).reduce((s,mm)=>s+[1,2,3,4,5].filter(w=>mm[w]).length,0);
+  if(n===0){ alert(`${curFy}年度には、まだオンコールの割り当てがありません。`); return; }
+  if(!confirm(`${curFy}年度のオンコール当番をすべて削除して、空の状態に戻します。\n元には戻せません。\nピッチ当番表とメンバー登録はそのまま残ります。\n\nよろしいですか？`))return;
+  delete data.oncall[curFy];
+  saveData(); renderOncall();
+}
+
+/* ---- 医局秘書への連絡メッセージ ---- */
+function ocRenderMsg(){
+  const v=document.getElementById('ocMsgSel').value;
+  const box=document.getElementById('ocMsg');
+  if(!v){ box.value=''; return; }
+  const [y,m]=v.split('-').map(Number);
+  const a=ocGet(curFy,y,m);
+  const nm=wd=>a[wd]?pName(a[wd]):'未定';
+  const to=document.getElementById('ocTo').value.trim();
+  box.value=`${to}さん　お疲れ様です。いつもお世話になっております。\n`
+    +`${m}月のフェローオンコール当番を以下のように作成させていただきましたので、調整のほどよろしくお願いいたします。\n`
+    +`月曜：${nm(1)}、火曜：${nm(2)}、水曜：${nm(3)}、木曜：${nm(4)}、金曜：${nm(5)}`;
+}
+function ocToChanged(){ data.ocTo=document.getElementById('ocTo').value.trim(); saveData(); ocRenderMsg(); }
+async function ocCopyMsg(){
+  ocRenderMsg();
+  const t=document.getElementById('ocMsg').value;
+  if(!t){ alert('コピーするメッセージがありません。月を選んでください。'); return; }
+  try{ await navigator.clipboard.writeText(t); }
+  catch(e){
+    const el=document.getElementById('ocMsg');
+    el.removeAttribute('readonly'); el.select(); document.execCommand('copy');
+    el.setAttribute('readonly',''); window.getSelection().removeAllRanges();
+  }
+  const b=document.getElementById('ocCopyBtn');
+  b.textContent='コピーしました ✓';
+  setTimeout(()=>b.textContent='メッセージをコピー',1500);
+}
+
 /* ---- 手動調整 ---- */
 function optionHtml(sel,ds,wd){
   let h=`<option value="">（空欄）</option>`;
@@ -1240,10 +1659,12 @@ function saveModal(){
 function closeModal(){ document.getElementById('ovl').classList.remove('show'); modalCtx=null; }
 
 /* ================= 初期化 ================= */
-function renderAll(){ renderPeople(); renderSchedule(); renderRules(); }
-Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleActive,addIcRow,
+function renderAll(){ renderPeople(); renderSchedule(); renderOncall(); renderRules(); }
+Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleActive,toggleOncall,addIcRow,
   onFyChange,onStartChange,generate,clearSchedule,openModal,bulkApply,saveModal,closeModal,
-  renderRoulette,spinRoulette,applyRoulette,reloadNoop:()=>{}});
+  renderRoulette,spinRoulette,applyRoulette,
+  onOcFyChange,openOcModal,closeOcModal,saveOcModal,ocAutoAssign,ocFill,ocClear,
+  ocRenderMsg,ocToChanged,ocCopyMsg,reloadNoop:()=>{}});
 
 (async function init(){
   const g=document.getElementById('pGaikin');
@@ -1256,15 +1677,17 @@ Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleA
   setIcRows([]);
   const now=new Date(); const thisFy=now.getMonth()+1>=4?now.getFullYear():now.getFullYear()-1;
   const cur=Math.max(thisFy,FY_MIN);
-  const sel=document.getElementById('fySel');
+  const sel=document.getElementById('fySel'), selO=document.getElementById('ocFySel');
   for(let fy=FY_MIN;fy<=cur+FY_AHEAD;fy++){
     const o=document.createElement('option'); o.value=fy; o.textContent=`${fy}年度`;
     if(fy===cur)o.selected=true; sel.appendChild(o);
+    const o2=o.cloneNode(true); selO.appendChild(o2);
   }
   curFy=cur;
   document.getElementById('rlFrom').value=k(now.getFullYear(),now.getMonth()+1,now.getDate());
   migrate(data);
   curMonth=defaultMonth(cur);
+  ocMonth=ocDefaultMonth(cur);
   await initStore();
   renderAll();
   // ホーム画面インストールを可能にするための下準備(サービスワーカー登録)
