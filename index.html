@@ -115,20 +115,24 @@
   .rlp label.ng{background:#f7f8fa;border-style:dashed;color:#aab4c0;cursor:not-allowed}
   .why{font-size:11.5px;color:var(--danger)}
   .rlp label.ng .why{color:#aab4c0}
-  #rlResult{margin-top:12px;min-height:52px;display:flex;align-items:center;justify-content:center;gap:6px;
+  #rlResult,#ocResult{margin-top:12px;min-height:52px;display:flex;align-items:center;justify-content:center;gap:6px;
     background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:8px;padding:12px;
     font-size:21px;font-weight:700;color:var(--navy);text-align:center}
-  #rlResult.idle{font-size:13px;font-weight:400;color:var(--sub)}
-  #rlResult.spin{color:var(--sub)}
+  #rlResult.idle,#ocResult.idle{font-size:13px;font-weight:400;color:var(--sub)}
+  #rlResult.spin,#ocResult.spin{color:var(--sub)}
+  /* オンコールの「その日だけの代役」 */
+  .exmk{display:inline-block;margin-left:3px;padding:0 4px;border-radius:4px;font-size:9.5px;
+    background:var(--blue);color:#fff;vertical-align:middle}
+  .exn{margin-top:3px;font-size:11px;color:var(--blue);line-height:1.5}
   /* 代役ルーレットの履歴 */
-  #rlLogBody td{text-align:left;vertical-align:top;font-size:13px}
-  #rlLogBody .at{white-space:nowrap;color:var(--sub);font-size:12.5px}
-  #rlLogBody .rsn{word-break:break-all}
-  #rlLogBody details>summary{cursor:pointer;color:var(--blue);font-size:12.5px;list-style:revert}
-  #rlLogBody details>div{margin-top:5px;color:var(--sub);font-size:12.5px;line-height:1.7}
-  #rlLogBody .del{appearance:none;border:none;background:none;color:var(--sub);
+  #rlLogBody td,#ocLogBody td{text-align:left;vertical-align:top;font-size:13px}
+  #rlLogBody .at,#ocLogBody .at{white-space:nowrap;color:var(--sub);font-size:12.5px}
+  #rlLogBody .rsn,#ocLogBody .rsn{word-break:break-all}
+  #rlLogBody details>summary,#ocLogBody details>summary{cursor:pointer;color:var(--blue);font-size:12.5px;list-style:revert}
+  #rlLogBody details>div,#ocLogBody details>div{margin-top:5px;color:var(--sub);font-size:12.5px;line-height:1.7}
+  #rlLogBody .del,#ocLogBody .del{appearance:none;border:none;background:none;color:var(--sub);
     font-size:15px;line-height:1;cursor:pointer;padding:2px 4px}
-  #rlLogBody .del:hover{color:var(--danger)}
+  #rlLogBody .del:hover,#ocLogBody .del:hover{color:var(--danger)}
   /* ルールタブ */
   .rules h3{font-size:14.5px;color:var(--navy);margin:20px 0 7px;padding-left:9px;border-left:4px solid var(--blue-line)}
   .rules p{margin-bottom:9px}
@@ -332,7 +336,7 @@
   <div class="card">
     <div class="cardhead">
       <h2>代役ルーレットの履歴</h2>
-      <button class="btn d sm" onclick="clearRlLog()">履歴をすべて消す</button>
+      <button class="btn d sm" onclick="clearLog('rl')">履歴をすべて消す</button>
     </div>
     <div class="tblwrap">
     <table>
@@ -413,11 +417,64 @@
   </div>
 
   <div class="card">
+    <h2>代役ルーレット（急な休み・長期の不在）</h2>
+    <p class="muted" style="margin-bottom:10px">
+      指定した期間の平日について、<b>その日だけ</b>オンコール担当を差し替えます。
+      月×曜日の担当そのものは変わりません（例：8月の水曜が木村のままでも、8/12だけ山田にできます）。
+      入れた代役はカレンダー・年間一覧・秘書への連絡メッセージにも反映されます。
+    </p>
+    <div class="row" style="margin-bottom:8px">
+      <div style="flex:0;min-width:150px">
+        <label class="f">開始日</label>
+        <input type="date" id="ocFrom" onchange="renderOcRoulette()">
+      </div>
+      <div style="flex:0;min-width:180px">
+        <label class="f">終了日（1日だけなら空欄）</label>
+        <input type="date" id="ocTo" onchange="renderOcRoulette()">
+      </div>
+      <div style="flex:0;min-width:180px">
+        <label class="f">休む人</label>
+        <select id="ocWho" onchange="renderOcRoulette()"></select>
+      </div>
+      <div style="flex:1;min-width:200px">
+        <label class="f">要件（履歴に残ります）</label>
+        <input type="text" id="ocReason" maxlength="40" placeholder="夏休み・出張・体調不良 など">
+      </div>
+    </div>
+    <div id="ocInfo"></div>
+    <div id="ocCands"></div>
+    <div id="ocResult" class="idle">条件を決めて「ルーレットを回す」を押してください</div>
+    <div class="tblwrap" id="ocTableWrap" style="display:none;margin-top:10px">
+      <table>
+        <thead><tr><th>日付</th><th>もとの担当</th><th>代役</th></tr></thead>
+        <tbody id="ocBody"></tbody>
+      </table>
+    </div>
+    <div class="row" style="margin-top:10px;margin-bottom:0">
+      <div style="flex:0"><button class="btn p" id="ocSpin" onclick="spinOcRoulette()">ルーレットを回す</button></div>
+      <div style="flex:0"><button class="btn g" id="ocApply" onclick="applyOcRoulette()" style="display:none">この結果を反映する</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cardhead">
+      <h2>代役ルーレットの履歴</h2>
+      <button class="btn d sm" onclick="clearLog('oc')">履歴をすべて消す</button>
+    </div>
+    <div class="tblwrap">
+    <table>
+      <thead><tr><th style="white-space:nowrap">使用日時</th><th style="white-space:nowrap">対象期間</th><th>休む人</th><th>要件</th><th>交代の内容</th><th></th></tr></thead>
+      <tbody id="ocLogBody"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>医局秘書への連絡メッセージ</h2>
     <div class="row">
       <div style="flex:0;min-width:180px">
         <label class="f">宛名（「さん」は自動で付きます）</label>
-        <input type="text" id="ocTo" placeholder="例）佐藤" oninput="ocRenderMsg()" onchange="ocToChanged()">
+        <input type="text" id="ocMsgTo" placeholder="例）佐藤" oninput="ocRenderMsg()" onchange="ocToChanged()">
       </div>
       <div style="flex:0;min-width:150px">
         <label class="f">月</label>
@@ -624,7 +681,25 @@
       <li>医局秘書への連絡用メッセージを自動で作成できます（宛名と月を選んで「メッセージをコピー」）。担当が「未定」の曜日は「未定」と入るので、送る前に埋めてください。</li>
     </ul>
 
-    <h3>12. データの取り扱い</h3>
+    <h3>12. 代役ルーレット（オンコール）</h3>
+    <p>オンコール担当が休むときの代役をランダムに選ぶ機能です（オンコールタブ）。使い方は日中ピッチの §9 と同じですが、
+      オンコールは「月×曜日」で担当を決めているため、<b>差し替わるのは指定した期間のその日だけ</b>です。</p>
+    <ul>
+      <li>例）8月の水曜が木村でも、<b>8/12（水）だけ</b>山田に差し替えられます。8/5・8/19・8/26 は木村のままです。</li>
+      <li>月×曜日の担当そのものは変わりません。<b>その月を丸ごと代えたいときは</b>、月表示の日付タップ（または年間一覧の「編集」）から担当を変えてください。</li>
+      <li>次の人はその日の候補から<b>自動的に外れます</b>…その日の担当者本人／その曜日が外勤日の人／メンバー登録で「オンコール」のチェックが無い人。
+          <b>感染制御部・細菌検査室ローテ中の人は候補に入ります</b>（オンコールはローテ中でも担当できるため。日中ピッチとの違いです）。</li>
+      <li>土日・祝日は対象から外れます。</li>
+      <li>入れた代役は、月表示に<b>「代」</b>のマーク、年間一覧に<b>「12日は山田」</b>の注記、
+          医局秘書への連絡メッセージに<b>「ただし、12日（水）は山田（木村の代役）となります。」</b>として反映されます。</li>
+      <li><b>解除のしかた</b>…月表示でその月の日付をタップし、編集画面の下にある「この月の『その日だけの代役』」から<b>「解除」</b>。もとの曜日担当に戻ります。</li>
+      <li><b>「基準月より後を自動で埋める」を押しても、入れた代役は消えません</b>（曜日担当とは別に持っているため）。
+          不要になった代役は上の手順で解除してください。いっぽう<b>「この年度のオンコールをすべて削除」では代役もいっしょに消えます</b>。</li>
+      <li>反映すると、日中ピッチと同じように<b>使用日時・対象期間・休む人・要件・交代の内訳</b>がオンコールタブの
+          <b>「代役ルーレットの履歴」</b>に残ります（日中ピッチの履歴とは別々です）。</li>
+    </ul>
+
+    <h3>13. データの取り扱い</h3>
     <div class="warn">
       このアプリのデータはFirebase（インターネット上のデータ保存サービス）に保存され、
       <b>このページのURLを知っている人は誰でも同じ内容を見て編集できます</b>。ログインはありません。<br>
@@ -659,6 +734,7 @@
     <div class="row" style="margin-top:10px;margin-bottom:0">
       <div style="flex:0"><button class="btn g sm" onclick="ocAutoAssign()">この月をランダムに割り当てる</button></div>
     </div>
+    <div id="oExLines"></div>
     <div class="row" style="margin-top:14px;margin-bottom:0">
       <div style="flex:0"><button class="btn p" onclick="saveOcModal()">保存する</button></div>
       <div style="flex:0"><button class="btn g" onclick="closeOcModal()">閉じる</button></div>
@@ -688,19 +764,25 @@ const FIREBASE_CONFIG = {
      people: [{id,name,gaikin:[1..5],ics:[{s,e},...],lab1,lab2,active:true}],
      schedules: { "2026": { "2026-04-06":"personId or ''(空欄)" } },
      genStart:  { "2026": 8 },
-     rlLog: [{at,from,to,who,reason,days:[{d,f,t}]}]
+     oncall:    { "2026": { "2026-8": {1:personId,...,5:personId, pin:[3]} } },
+     ocEx:      { "2026-08-12": "personId" },
+     rlLog: [{at,from,to,who,reason,days:[{d,f,t}]}],
+     ocLog: [ 同上 ]
    }
    ics = 感染制御部ローテの期間(複数可)。旧形式の ic1/ic2 は読み込み時に変換します。
    genStart = 年度ごとの「作成を始める月」。年度の途中から始める場合に使い、
               それより前の月は自動作成の対象外・担当日数の集計対象外になります。
-   rlLog  = 代役ルーレットを反映したときの履歴（新しいものが先頭）。
+   ocEx   = オンコールの「その日だけの代役」。オンコール本体は月×曜日で1人なので、
+            1日だけの交代はこの例外に入れ、表示のときに優先します（ocOn を参照）。
+   rlLog / ocLog = 代役ルーレットを反映したときの履歴（新しいものが先頭）。
+            rlLog=日中ピッチ、ocLog=オンコール。
             at=反映した日時(ミリ秒), from/to=指定した期間, who=休む人, reason=要件,
             days=交代の内訳（d=日付, f=もとの担当, t=代役）。
             あとから見て分かるように、人はIDではなく「そのときの名前」で記録します
             （メンバーを削除しても履歴は読めます）。 */
 const WD=['日','月','火','水','木','金','土'];
 const CAL_ORDER=[1,2,3,4,5];   // カレンダーの列（月〜金のみ。土日は表示しない）
-let data={people:[],schedules:{},rlLog:[]};
+let data={people:[],schedules:{},ocEx:{},rlLog:[],ocLog:[]};
 let curFy, curMonth, modalCtx=null;
 let db=null, docRef=null, lastSavedJson='';
 const configured = !String(FIREBASE_CONFIG.apiKey).includes('ここに');
@@ -715,8 +797,10 @@ function migrate(d){
   d.people=d.people||[]; d.schedules=d.schedules||{};
   if(!d.genStart)d.genStart={...DEFAULT_GEN_START};   // 初回のみ既定値を入れる
   if(!d.oncall)d.oncall={};                           // オンコール表 { 年度: { "2026-4": {1:id,...,5:id} } }
+  if(!d.ocEx)d.ocEx={};                               // オンコールの日ごとの代役 { "2026-08-12": id }
   if(d.ocTo===undefined)d.ocTo='';                    // 秘書向けメッセージの宛名
-  if(!Array.isArray(d.rlLog))d.rlLog=[];              // 代役ルーレットの履歴（新しい順）
+  if(!Array.isArray(d.rlLog))d.rlLog=[];              // 日中ピッチの代役ルーレット履歴（新しい順）
+  if(!Array.isArray(d.ocLog))d.ocLog=[];              // オンコールの代役ルーレット履歴（新しい順）
   d.people.forEach(p=>{
     if(!Array.isArray(p.ics)) p.ics=(p.ic1&&p.ic2)?[{s:p.ic1,e:p.ic2}]:[];
     delete p.ic1; delete p.ic2;
@@ -1199,7 +1283,7 @@ function setFy(fy){
 }
 function onFyChange(){ setFy(+document.getElementById('fySel').value); renderSchedule(); }
 function onOcFyChange(){ setFy(+document.getElementById('ocFySel').value); renderOncall(); }
-function renderSchedule(){ renderStartSel(); renderYear(); renderMonthBtns(); renderCal(); renderStats(); renderRoulette(); renderRlLog(); }
+function renderSchedule(){ renderStartSel(); renderYear(); renderMonthBtns(); renderCal(); renderStats(); renderRoulette(); renderLog('rl'); }
 
 function renderStartSel(){
   const sel=document.getElementById('startSel'); sel.innerHTML='';
@@ -1446,31 +1530,38 @@ function applyRoulette(){
     const fy=fyOf(r.ds);
     (data.schedules[fy]||(data.schedules[fy]={}))[r.ds]=r.to;
   });
-  addRlLog(rows);
+  addLog('rl',rows);
   document.getElementById('rlReason').value='';   // 次の抽選に前の要件を持ち越さない
   saveData(); renderSchedule();
 }
 
-/* ---- 代役ルーレットの履歴 ----
+/* ---- 代役ルーレットの履歴（日中ピッチ・オンコール共通） ----
    「いつ・どの期間を・誰の代わりに・どんな要件で」回したかを残します。
-   反映（この結果を反映する）を押したときだけ1件記録します。 */
-const RL_LOG_MAX=200;   // 古いものから捨てる上限（Firebase の1件あたりの容量対策）
+   反映（この結果を反映する）を押したときだけ1件記録します。
+   kind='rl'（日中ピッチ）/'oc'（オンコール）。入力欄と表のidは kind を頭に付けた名前でそろえています。 */
+const LOG_MAX=200;   // 古いものから捨てる上限（Firebase の1件あたりの容量対策）
+const LOG_NAME={rl:'日中ピッチ',oc:'オンコール'};
+const logArr=kind=>{
+  const key=kind+'Log';
+  if(!Array.isArray(data[key]))data[key]=[];
+  return data[key];
+};
+const $v=id=>document.getElementById(id).value;
 
-function addRlLog(rows){
-  const a=document.getElementById('rlFrom').value;
-  const b=document.getElementById('rlTo').value||a;
-  const whoId=document.getElementById('rlWho').value;
+function addLog(kind,rows){
+  const a=$v(kind+'From'), b=$v(kind+'To')||a;
+  const whoId=$v(kind+'Who');
   // 休む人を指定しなかった場合は、もとの担当者の名前をまとめて残す
   const names=[...new Set(rows.map(r=>r.cur).filter(Boolean).map(pName))];
-  if(!Array.isArray(data.rlLog))data.rlLog=[];
-  data.rlLog.unshift({
+  const log=logArr(kind);
+  log.unshift({
     at: Date.now(),
     from: a, to: b,
     who: whoId?pName(whoId):(names.length?names.join('・'):'指定なし'),
-    reason: document.getElementById('rlReason').value.trim(),
-    days: rows.map(r=>({d:r.ds, f:r.cur?pName(r.cur):'未割当', t:pName(r.to)}))
+    reason: $v(kind+'Reason').trim(),
+    days: rows.map(r=>({d:r.ds, f:r.cur?pName(r.cur):(kind==='oc'?'未定':'未割当'), t:pName(r.to)}))
   });
-  if(data.rlLog.length>RL_LOG_MAX)data.rlLog.length=RL_LOG_MAX;
+  if(log.length>LOG_MAX)log.length=LOG_MAX;
 }
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1484,15 +1575,15 @@ const spanLabel=(a,b)=>{
   return a===b?f(a):`${f(a)} 〜 ${f(b)}`;
 };
 
-function renderRlLog(){
-  const tb=document.getElementById('rlLogBody'); tb.innerHTML='';
-  const log=data.rlLog||[];
+function renderLog(kind){
+  const tb=document.getElementById(kind+'LogBody'); tb.innerHTML='';
+  const log=logArr(kind);
   if(log.length===0){
     tb.innerHTML='<tr><td colspan="6" class="muted">まだ履歴はありません。'
       +'代役ルーレットで「この結果を反映する」を押すと、ここに残ります。</td></tr>';
     return;
   }
-  log.forEach((e,i)=>{
+  log.forEach(e=>{
     const days=(e.days||[]);
     const detail=days.map(d=>`${dsLabel(d.d)}　${esc(d.f)} → <b>${esc(d.t)}</b>`).join('<br>');
     const tr=document.createElement('tr');
@@ -1502,24 +1593,27 @@ function renderRlLog(){
       +`<td class="rsn">${e.reason?esc(e.reason):'<span class="muted">—</span>'}</td>`
       +`<td><details><summary>${days.length}日分</summary><div>${detail}</div></details></td>`
       +`<td style="width:1%"><button class="del" title="この履歴を消す">×</button></td>`;
-    tr.querySelector('.del').onclick=()=>delRlLog(e.at);
+    tr.querySelector('.del').onclick=()=>delLog(kind,e.at);
     tb.appendChild(tr);
   });
 }
 
 /* ほかの端末の更新で並び順が変わっても取り違えないよう、日時で探して消します */
-function delRlLog(at){
-  const i=(data.rlLog||[]).findIndex(x=>x.at===at);
-  if(i<0){ renderRlLog(); return; }
+function delLog(kind,at){
+  const log=logArr(kind);
+  const i=log.findIndex(x=>x.at===at);
+  if(i<0){ renderLog(kind); return; }
   if(!confirm(`${atLabel(at)} の履歴を消します。\n（当番表そのものは変わりません）`))return;
-  data.rlLog.splice(i,1);
-  saveData(); renderRlLog();
+  log.splice(i,1);
+  saveData(); renderLog(kind);
 }
-function clearRlLog(){
-  if(!(data.rlLog||[]).length)return;
-  if(!confirm(`代役ルーレットの履歴${data.rlLog.length}件をすべて消します。\n（当番表そのものは変わりません。元には戻せません）`))return;
-  data.rlLog=[];
-  saveData(); renderRlLog();
+function clearLog(kind){
+  const log=logArr(kind);
+  if(!log.length)return;
+  if(!confirm(`${LOG_NAME[kind]}の代役ルーレットの履歴${log.length}件をすべて消します。`
+    +`\n（当番表そのものは変わりません。元には戻せません）`))return;
+  data[kind+'Log']=[];
+  saveData(); renderLog(kind);
 }
 
 /* ================= オンコール表 =================
@@ -1535,6 +1629,19 @@ function ocSet(fy,y,m,v){
   data.oncall[fy][ocKeyOf(y,m)]=v;
 }
 function ocHasAny(fy,y,m){ const a=ocGet(fy,y,m); return [1,2,3,4,5].some(w=>a[w]); }
+/* その日のオンコール担当。代役ルーレットで入れた「その日だけの代役」があればそちらが優先。
+   オンコール本体は月×曜日で1人なので、1日だけの交代は data.ocEx に持ちます。 */
+const ocExOn=ds=>(data.ocEx||{})[ds]||'';
+function ocOn(ds){
+  const ex=ocExOn(ds); if(ex)return ex;
+  const [y,m]=ds.split('-').map(Number);
+  return ocGet(fyOf(ds),y,m)[wdayOf(ds)]||'';
+}
+/* その月にある「その日だけの代役」を日付順で返す */
+function ocExOfMonth(y,m){
+  const pre=`${y}-${pad(m)}-`;
+  return Object.keys(data.ocEx||{}).filter(ds=>ds.startsWith(pre)&&data.ocEx[ds]).sort();
+}
 /* オンコール表で最初に開く月。今年度なら今月、ほかの年度なら4月。 */
 function ocDefaultMonth(fy){
   const now=new Date(), y=now.getFullYear(), m=now.getMonth()+1;
@@ -1545,7 +1652,8 @@ function renderOncall(){
   document.getElementById('ocFySel').value=curFy;
   renderOcMonthBtns(); renderOcCal(); renderOcYear();
   renderOcBaseSel(); renderOcMsgSel();
-  const to=document.getElementById('ocTo');
+  renderOcRoulette(); renderLog('oc');
+  const to=document.getElementById('ocMsgTo');
   if(document.activeElement!==to)to.value=data.ocTo||'';
   ocRenderMsg();
 }
@@ -1579,9 +1687,10 @@ function renderOcCal(){
     if(hol){ c.classList.add('ho'); inner+=`<span class="hn">${hol}</span>`; }
     else{
       c.classList.add('wd');
-      const id=a[wd];
+      const ds=k(y,m,d), ex=ocExOn(ds), id=ex||a[wd];
       if(id){
-        inner+=`<div class="name"><span class="dot" style="background:${pColor(id)}"></span>${pName(id)}</div>`;
+        inner+=`<div class="name"><span class="dot" style="background:${pColor(id)}"></span>${pName(id)}`
+          +(ex?'<span class="exmk">代</span>':'')+'</div>';
         const p=data.people.find(x=>x.id===id);
         if(p&&!p.oncall)inner+=`<div class="out">オンコール対象外!</div>`;
         if(p&&(p.gaikin||[]).includes(wd))inner+=`<div class="out">外勤日!</div>`;
@@ -1598,15 +1707,20 @@ function renderOcYear(){
   for(const {y,m} of fyMonths(curFy)){
     const a=ocGet(curFy,y,m);
     const pins=ocPins(a);
+    const exDays=ocExOfMonth(y,m);
     const tds=[1,2,3,4,5].map(wd=>{
       const pin=pins.includes(wd)?'<span class="muted">（固定）</span>':'';
-      if(!a[wd])return `<td>—${pin}</td>`;
+      // その曜日にある「その日だけの代役」を注記で添える
+      const ex=exDays.filter(ds=>wdayOf(ds)===wd)
+        .map(ds=>`${+ds.slice(8)}日は${pName(data.ocEx[ds])}`);
+      const exn=ex.length?`<div class="exn">${ex.join('<br>')}</div>`:'';
+      if(!a[wd])return `<td>—${pin}${exn}</td>`;
       const p=data.people.find(x=>x.id===a[wd]);
       const flags=[];
       if(p&&!p.oncall)flags.push('対象外');
       if(p&&(p.gaikin||[]).includes(wd))flags.push('外勤');
       const warn=flags.length?`<span class="why">（${flags.join('・')}）</span>`:'';
-      return `<td>${pName(a[wd])}${pin}${warn}</td>`;
+      return `<td>${pName(a[wd])}${pin}${warn}${exn}</td>`;
     }).join('');
     tb.innerHTML+=`<tr><th>${y}年${m}月</th>${tds}`
       +`<td><button class="btn g sm" onclick="openOcModal(${y},${m})">編集</button></td></tr>`;
@@ -1653,7 +1767,34 @@ function openOcModal(y,m){
       <select data-wd="${wd}">${ocOptionHtml(a[wd]||'',wd)}</select>
       <label class="pinlb"><input type="checkbox" class="pinCk" data-wd="${wd}" ${pins.includes(wd)?'checked':''}>固定</label></div>`;
   }
+  renderOcExLines(y,m);
   document.getElementById('ovlO').classList.add('show');
+}
+/* 代役ルーレットで入れた「その日だけの代役」の一覧。ここから1件ずつ解除できます。 */
+function renderOcExLines(y,m){
+  const box=document.getElementById('oExLines');
+  const days=ocExOfMonth(y,m);
+  if(days.length===0){ box.innerHTML=''; return; }
+  box.innerHTML='<hr style="border:none;border-top:1px solid var(--blue-line);margin:10px 0">'
+    +'<div class="f" style="margin-bottom:6px">この月の「その日だけの代役」</div>';
+  days.forEach(ds=>{
+    const base=ocGet(curFy,y,m)[wdayOf(ds)];
+    const line=document.createElement('div'); line.className='line';
+    line.innerHTML=`<span class="dt">${dsLabel(ds)}</span>`
+      +`<span style="flex:1">${base?esc(pName(base))+' → ':''}<b>${esc(pName(data.ocEx[ds]))}</b></span>`
+      +`<button class="btn g sm">解除</button>`;
+    line.querySelector('button').onclick=()=>ocDelEx(ds);
+    box.appendChild(line);
+  });
+}
+/* 代役を解除して、もとの月×曜日の担当に戻す */
+function ocDelEx(ds){
+  if(!confirm(`${dsLabel(ds)} の代役（${pName(data.ocEx[ds])}）を解除して、`
+    +`もとの${WD[wdayOf(ds)]}曜日の担当に戻します。\n（履歴は残ります）`))return;
+  delete data.ocEx[ds];
+  saveData();
+  if(ocCtx)renderOcExLines(ocCtx.y,ocCtx.m);
+  renderOncall();
 }
 /* モーダル内のランダム割り当て。5人以上なら一人1曜日、4人以下なら一人2曜日まで。
    外勤日の曜日には割り当てない。「固定」にチェックした曜日はいまの担当のまま動かさない。
@@ -1773,8 +1914,13 @@ function ocFill(){
   }
   if(bi===months.length-1){ alert('基準月が年度の最後の月（3月）のため、埋める月がありません。'); return; }
   const rest=months.slice(bi+1);
-  if(rest.some(({y,m})=>ocHasAny(curFy,y,m))){
-    if(!confirm(`${by}年${bm}月より後の月の担当は上書きされます。\nよろしいですか？`))return;
+  // 「その日だけの代役」は月×曜日とは別に持っているので、自動作成では消えません
+  const exN=rest.reduce((s,{y,m})=>s+ocExOfMonth(y,m).length,0);
+  if(rest.some(({y,m})=>ocHasAny(curFy,y,m))||exN){
+    if(!confirm(`${by}年${bm}月より後の月の担当は上書きされます。`
+      +(exN?`\n\n※代役ルーレットで入れた「その日だけの代役」${exN}件はそのまま残ります。`
+           +`\n　不要なら、月表示の日付をタップして「解除」してください。`:'')
+      +`\nよろしいですか？`))return;
   }
   let blanks=0;
   for(const {y,m} of rest){
@@ -1788,9 +1934,148 @@ function ocFill(){
 function ocClear(){
   const map=(data.oncall||{})[curFy]||{};
   const n=Object.values(map).reduce((s,mm)=>s+[1,2,3,4,5].filter(w=>mm[w]).length,0);
-  if(n===0){ alert(`${curFy}年度には、まだオンコールの割り当てがありません。`); return; }
-  if(!confirm(`${curFy}年度のオンコール当番をすべて削除して、空の状態に戻します。\n元には戻せません。\nピッチ当番表とメンバー登録はそのまま残ります。\n\nよろしいですか？`))return;
+  // その年度に入っている「その日だけの代役」も、いっしょに消さないと宙に浮く
+  const exDays=fyMonths(curFy).flatMap(({y,m})=>ocExOfMonth(y,m));
+  if(n===0&&exDays.length===0){ alert(`${curFy}年度には、まだオンコールの割り当てがありません。`); return; }
+  if(!confirm(`${curFy}年度のオンコール当番をすべて削除して、空の状態に戻します。`
+    +(exDays.length?`\n代役ルーレットで入れた「その日だけの代役」${exDays.length}件もいっしょに消えます（履歴は残ります）。`:'')
+    +`\n元には戻せません。\nピッチ当番表とメンバー登録はそのまま残ります。\n\nよろしいですか？`))return;
   delete data.oncall[curFy];
+  exDays.forEach(ds=>{ delete data.ocEx[ds]; });
+  saveData(); renderOncall();
+}
+
+/* ---- 代役ルーレット（オンコール） ----
+   日中ピッチと同じ操作感。ただしオンコールは月×曜日で1人なので、当たった人は
+   data.ocEx（その日だけの代役）に入れます。月×曜日の担当そのものは変えません。
+   候補から自動で外すのは「オンコール対象外の人」「その曜日が外勤日の人」「その日の担当者本人」。
+   ローテ期間中でもオンコールは担当できる（オンコール本来のルールに合わせています）。 */
+let ocRlResult=null;   // [{ds,cur,to}]
+
+function ocTargets(){
+  const a=document.getElementById('ocFrom').value;
+  const b=document.getElementById('ocTo').value||a;
+  const who=document.getElementById('ocWho').value;
+  if(!a)return{err:'開始日を選んでください。'};
+  if(b<a)return{err:'終了日は開始日と同じか、あとの日にしてください。'};
+  const days=[];
+  for(let ds=a; ds<=b && days.length<400; ds=shiftDate(ds,1)){
+    if(!isDutyDay(ds))continue;          // 土日・祝日はオンコールなし
+    const cur=ocOn(ds);
+    if(who&&cur!==who)continue;
+    days.push({ds,cur});
+  }
+  if(days.length===0)
+    return{err:who?'この期間に、その人のオンコール担当日はありません。':'この期間にオンコールのある平日がありません。'};
+  return{days,who};
+}
+function ocEligible(p,ds,cur){
+  return p.oncall && p.id!==cur && !(p.gaikin||[]).includes(wdayOf(ds));
+}
+
+function renderOcRoulette(){
+  const info=document.getElementById('ocInfo'), box=document.getElementById('ocCands');
+  const res=document.getElementById('ocResult');
+  ocRlResult=null;
+  document.getElementById('ocApply').style.display='none';
+  document.getElementById('ocSpin').textContent='ルーレットを回す';
+  document.getElementById('ocTableWrap').style.display='none';
+  res.className='idle'; res.textContent='条件を決めて「ルーレットを回す」を押してください';
+  box.innerHTML='';
+
+  const who=document.getElementById('ocWho');
+  const keep=who.value;
+  who.innerHTML='<option value="">指定しない（期間内のすべてのオンコール日）</option>'
+    +data.people.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  if([...who.options].some(o=>o.value===keep))who.value=keep;
+
+  const t=ocTargets();
+  if(t.err){ info.innerHTML=`<span class="muted">${t.err}</span>`; return; }
+  info.innerHTML=`<span class="muted">対象：<b>${t.days.length}日</b>`
+    +`（${t.days.slice(0,8).map(x=>dsLabel(x.ds)).join('、')}${t.days.length>8?' ほか':''}）</span>`;
+
+  box.innerHTML='<label class="f" style="margin-top:8px">候補（チェックを外すと除外できます）</label>';
+  const list=document.createElement('div'); list.className='rlp';
+  let n=0;
+  data.people.filter(p=>p.oncall).forEach(p=>{
+    const ok=t.days.filter(({ds,cur})=>ocEligible(p,ds,cur)).length;
+    const l=document.createElement('label');
+    const note=ok===0?'対象日を担当できません':(ok<t.days.length?`${ok}/${t.days.length}日のみ可`:'');
+    l.innerHTML=`<input type="checkbox" value="${p.id}" ${ok?'checked':'disabled'}>`
+      +`<span class="dot" style="background:${pColor(p.id)}"></span>${p.name}`
+      +(note?`<span class="why">（${note}）</span>`:'');
+    if(!ok)l.classList.add('ng');
+    else{
+      n++;
+      l.querySelector('input').addEventListener('change',e=>l.classList.toggle('off',!e.target.checked));
+    }
+    list.appendChild(l);
+  });
+  box.appendChild(list);
+  if(n===0)res.textContent='代われる人がいません（メンバー登録の「オンコール」と外勤日をご確認ください）';
+}
+
+function spinOcRoulette(){
+  const t=ocTargets();
+  if(t.err){ alert(t.err); return; }
+  const excluded=new Set([...document.querySelectorAll('#ocCands input:not(:checked)')].map(i=>i.value));
+  const pool=data.people.filter(p=>p.oncall&&!excluded.has(p.id));
+  if(pool.length===0){ alert('候補が1人もいません。除外のチェックを見直してください。'); return; }
+
+  const out=[]; let none=0;
+  for(const {ds,cur} of t.days){
+    const able=pool.filter(p=>ocEligible(p,ds,cur));
+    if(able.length===0){ out.push({ds,cur,to:null}); none++; continue; }
+    out.push({ds,cur,to:able[Math.floor(Math.random()*able.length)].id});
+  }
+
+  const res=document.getElementById('ocResult'), btn=document.getElementById('ocSpin');
+  btn.disabled=true;
+  document.getElementById('ocApply').style.display='none';
+  document.getElementById('ocTableWrap').style.display='none';
+  res.className='spin';
+  const names=pool.map(p=>p.id);
+  let el=0, delay=60;
+  const tick=()=>{
+    const id=names[Math.floor(Math.random()*names.length)];
+    res.innerHTML=`<span class="dot" style="background:${pColor(id)}"></span>${pName(id)}`;
+    el+=delay; delay*=1.13;
+    if(el<1800){ setTimeout(tick,delay); return; }
+    ocRlResult=out;
+    res.className='';
+    if(out.length===1&&out[0].to)
+      res.innerHTML=`<span class="dot" style="background:${pColor(out[0].to)}"></span>${pName(out[0].to)}`;
+    else
+      res.textContent=`${out.length-none}日分の代役が決まりました`+(none?`（${none}日は該当者なし）`:'');
+    renderOcRlTable(out);
+    btn.disabled=false; btn.textContent='もう一度回す';
+    if(out.some(r=>r.to))document.getElementById('ocApply').style.display='';
+  };
+  tick();
+}
+
+function renderOcRlTable(out){
+  const tb=document.getElementById('ocBody'); tb.innerHTML='';
+  out.forEach(r=>{
+    const to=r.to
+      ? `<span class="dot" style="background:${pColor(r.to)}"></span>${pName(r.to)}`
+      : '<span class="muted">該当者なし</span>';
+    tb.innerHTML+=`<tr><td>${dsLabel(r.ds)}</td>`
+      +`<td>${r.cur?pName(r.cur):'<span class="muted">未定</span>'}</td><td>${to}</td></tr>`;
+  });
+  document.getElementById('ocTableWrap').style.display=out.length>1?'':'none';
+}
+
+function applyOcRoulette(){
+  if(!ocRlResult)return;
+  const rows=ocRlResult.filter(r=>r.to);
+  if(rows.length===0)return;
+  if(!confirm(`${rows.length}日分のオンコール担当を、その日だけこの結果に置き換えます。\n`
+    +`（月×曜日の担当そのものは変わりません。元には戻せません）\nよろしいですか？`))return;
+  if(!data.ocEx)data.ocEx={};
+  rows.forEach(r=>{ data.ocEx[r.ds]=r.to; });
+  addLog('oc',rows);
+  document.getElementById('ocReason').value='';   // 次の抽選に前の要件を持ち越さない
   saveData(); renderOncall();
 }
 
@@ -1802,12 +2087,19 @@ function ocRenderMsg(){
   const [y,m]=v.split('-').map(Number);
   const a=ocGet(curFy,y,m);
   const nm=wd=>a[wd]?pName(a[wd]):'未定';
-  const to=document.getElementById('ocTo').value.trim();
+  const to=document.getElementById('ocMsgTo').value.trim();
+  // その日だけの代役があれば、曜日の行のあとに但し書きを足す
+  const ex=ocExOfMonth(y,m).map(ds=>{
+    const base=a[wdayOf(ds)];
+    return `${+ds.slice(8)}日（${WD[wdayOf(ds)]}）は${pName(data.ocEx[ds])}`
+      +(base&&base!==data.ocEx[ds]?`（${pName(base)}の代役）`:'');
+  });
   box.value=`${to}さん　お疲れ様です。いつもお世話になっております。\n`
     +`${m}月のフェローオンコール当番を以下のように作成させていただきましたので、調整のほどよろしくお願いいたします。\n`
-    +`月曜：${nm(1)}、火曜：${nm(2)}、水曜：${nm(3)}、木曜：${nm(4)}、金曜：${nm(5)}`;
+    +`月曜：${nm(1)}、火曜：${nm(2)}、水曜：${nm(3)}、木曜：${nm(4)}、金曜：${nm(5)}`
+    +(ex.length?`\nただし、${ex.join('、')}となります。`:'');
 }
-function ocToChanged(){ data.ocTo=document.getElementById('ocTo').value.trim(); saveData(); ocRenderMsg(); }
+function ocToChanged(){ data.ocTo=document.getElementById('ocMsgTo').value.trim(); saveData(); ocRenderMsg(); }
 async function ocCopyMsg(){
   ocRenderMsg();
   const t=document.getElementById('ocMsg').value;
@@ -1866,7 +2158,8 @@ function closeModal(){ document.getElementById('ovl').classList.remove('show'); 
 function renderAll(){ renderPeople(); renderSchedule(); renderOncall(); renderRules(); }
 Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleActive,toggleOncall,addIcRow,
   onFyChange,onStartChange,generate,clearSchedule,openModal,bulkApply,saveModal,closeModal,
-  renderRoulette,spinRoulette,applyRoulette,clearRlLog,
+  renderRoulette,spinRoulette,applyRoulette,clearLog,
+  renderOcRoulette,spinOcRoulette,applyOcRoulette,
   onOcFyChange,openOcModal,closeOcModal,saveOcModal,ocAutoAssign,ocFill,ocClear,
   ocRenderMsg,ocToChanged,ocCopyMsg,reloadNoop:()=>{}});
 
