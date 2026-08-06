@@ -120,6 +120,15 @@
     font-size:21px;font-weight:700;color:var(--navy);text-align:center}
   #rlResult.idle{font-size:13px;font-weight:400;color:var(--sub)}
   #rlResult.spin{color:var(--sub)}
+  /* 代役ルーレットの履歴 */
+  #rlLogBody td{text-align:left;vertical-align:top;font-size:13px}
+  #rlLogBody .at{white-space:nowrap;color:var(--sub);font-size:12.5px}
+  #rlLogBody .rsn{word-break:break-all}
+  #rlLogBody details>summary{cursor:pointer;color:var(--blue);font-size:12.5px;list-style:revert}
+  #rlLogBody details>div{margin-top:5px;color:var(--sub);font-size:12.5px;line-height:1.7}
+  #rlLogBody .del{appearance:none;border:none;background:none;color:var(--sub);
+    font-size:15px;line-height:1;cursor:pointer;padding:2px 4px}
+  #rlLogBody .del:hover{color:var(--danger)}
   /* ルールタブ */
   .rules h3{font-size:14.5px;color:var(--navy);margin:20px 0 7px;padding-left:9px;border-left:4px solid var(--blue-line)}
   .rules p{margin-bottom:9px}
@@ -300,6 +309,10 @@
         <label class="f">休む人</label>
         <select id="rlWho" onchange="renderRoulette()"></select>
       </div>
+      <div style="flex:1;min-width:200px">
+        <label class="f">要件（履歴に残ります）</label>
+        <input type="text" id="rlReason" maxlength="40" placeholder="夏休み・出張・体調不良 など">
+      </div>
     </div>
     <div id="rlInfo"></div>
     <div id="rlCands"></div>
@@ -313,6 +326,19 @@
     <div class="row" style="margin-top:10px;margin-bottom:0">
       <div style="flex:0"><button class="btn p" id="rlSpin" onclick="spinRoulette()">ルーレットを回す</button></div>
       <div style="flex:0"><button class="btn g" id="rlApply" onclick="applyRoulette()" style="display:none">この結果を反映する</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cardhead">
+      <h2>代役ルーレットの履歴</h2>
+      <button class="btn d sm" onclick="clearRlLog()">履歴をすべて消す</button>
+    </div>
+    <div class="tblwrap">
+    <table>
+      <thead><tr><th style="white-space:nowrap">使用日時</th><th style="white-space:nowrap">対象期間</th><th>休む人</th><th>要件</th><th>交代の内容</th><th></th></tr></thead>
+      <tbody id="rlLogBody"></tbody>
+    </table>
     </div>
   </div>
 
@@ -566,6 +592,11 @@
           満たす人がいない場合は、ルールに反する人からも選び、結果の表に注記を出します。</li>
       <li>その日に代われる人が誰もいなければ「該当者なし」と表示し、その日は変更しません。</li>
       <li><b>「この結果を反映する」</b>を押して初めて当番表が書き換わります。押さなければ何も変わりません。</li>
+      <li>反映すると、<b>使用日時・対象期間・休む人・要件・交代の内訳</b>が下の
+          <b>「代役ルーレットの履歴」</b>に残ります。要件（夏休み・出張など）は回す前に入力欄へ書いてください。
+          あとから誰がなぜ代わったかを追えます（回しただけ・反映しなかった分は残りません）。</li>
+      <li>履歴は全員で共有され、行の「×」で1件ずつ、または「履歴をすべて消す」でまとめて消せます。
+          履歴を消しても<b>当番表そのものは変わりません</b>。古いものは200件を超えると自動で消えます。</li>
     </ul>
 
     <h3>10. 画面の見かた</h3>
@@ -656,14 +687,20 @@ const FIREBASE_CONFIG = {
    data = {
      people: [{id,name,gaikin:[1..5],ics:[{s,e},...],lab1,lab2,active:true}],
      schedules: { "2026": { "2026-04-06":"personId or ''(空欄)" } },
-     genStart:  { "2026": 8 }
+     genStart:  { "2026": 8 },
+     rlLog: [{at,from,to,who,reason,days:[{d,f,t}]}]
    }
    ics = 感染制御部ローテの期間(複数可)。旧形式の ic1/ic2 は読み込み時に変換します。
    genStart = 年度ごとの「作成を始める月」。年度の途中から始める場合に使い、
-              それより前の月は自動作成の対象外・担当日数の集計対象外になります。 */
+              それより前の月は自動作成の対象外・担当日数の集計対象外になります。
+   rlLog  = 代役ルーレットを反映したときの履歴（新しいものが先頭）。
+            at=反映した日時(ミリ秒), from/to=指定した期間, who=休む人, reason=要件,
+            days=交代の内訳（d=日付, f=もとの担当, t=代役）。
+            あとから見て分かるように、人はIDではなく「そのときの名前」で記録します
+            （メンバーを削除しても履歴は読めます）。 */
 const WD=['日','月','火','水','木','金','土'];
 const CAL_ORDER=[1,2,3,4,5];   // カレンダーの列（月〜金のみ。土日は表示しない）
-let data={people:[],schedules:{}};
+let data={people:[],schedules:{},rlLog:[]};
 let curFy, curMonth, modalCtx=null;
 let db=null, docRef=null, lastSavedJson='';
 const configured = !String(FIREBASE_CONFIG.apiKey).includes('ここに');
@@ -679,6 +716,7 @@ function migrate(d){
   if(!d.genStart)d.genStart={...DEFAULT_GEN_START};   // 初回のみ既定値を入れる
   if(!d.oncall)d.oncall={};                           // オンコール表 { 年度: { "2026-4": {1:id,...,5:id} } }
   if(d.ocTo===undefined)d.ocTo='';                    // 秘書向けメッセージの宛名
+  if(!Array.isArray(d.rlLog))d.rlLog=[];              // 代役ルーレットの履歴（新しい順）
   d.people.forEach(p=>{
     if(!Array.isArray(p.ics)) p.ics=(p.ic1&&p.ic2)?[{s:p.ic1,e:p.ic2}]:[];
     delete p.ic1; delete p.ic2;
@@ -1161,7 +1199,7 @@ function setFy(fy){
 }
 function onFyChange(){ setFy(+document.getElementById('fySel').value); renderSchedule(); }
 function onOcFyChange(){ setFy(+document.getElementById('ocFySel').value); renderOncall(); }
-function renderSchedule(){ renderStartSel(); renderYear(); renderMonthBtns(); renderCal(); renderStats(); renderRoulette(); }
+function renderSchedule(){ renderStartSel(); renderYear(); renderMonthBtns(); renderCal(); renderStats(); renderRoulette(); renderRlLog(); }
 
 function renderStartSel(){
   const sel=document.getElementById('startSel'); sel.innerHTML='';
@@ -1408,7 +1446,80 @@ function applyRoulette(){
     const fy=fyOf(r.ds);
     (data.schedules[fy]||(data.schedules[fy]={}))[r.ds]=r.to;
   });
+  addRlLog(rows);
+  document.getElementById('rlReason').value='';   // 次の抽選に前の要件を持ち越さない
   saveData(); renderSchedule();
+}
+
+/* ---- 代役ルーレットの履歴 ----
+   「いつ・どの期間を・誰の代わりに・どんな要件で」回したかを残します。
+   反映（この結果を反映する）を押したときだけ1件記録します。 */
+const RL_LOG_MAX=200;   // 古いものから捨てる上限（Firebase の1件あたりの容量対策）
+
+function addRlLog(rows){
+  const a=document.getElementById('rlFrom').value;
+  const b=document.getElementById('rlTo').value||a;
+  const whoId=document.getElementById('rlWho').value;
+  // 休む人を指定しなかった場合は、もとの担当者の名前をまとめて残す
+  const names=[...new Set(rows.map(r=>r.cur).filter(Boolean).map(pName))];
+  if(!Array.isArray(data.rlLog))data.rlLog=[];
+  data.rlLog.unshift({
+    at: Date.now(),
+    from: a, to: b,
+    who: whoId?pName(whoId):(names.length?names.join('・'):'指定なし'),
+    reason: document.getElementById('rlReason').value.trim(),
+    days: rows.map(r=>({d:r.ds, f:r.cur?pName(r.cur):'未割当', t:pName(r.to)}))
+  });
+  if(data.rlLog.length>RL_LOG_MAX)data.rlLog.length=RL_LOG_MAX;
+}
+
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const atLabel=ms=>{
+  const d=new Date(ms);
+  return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} `
+    +`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+const spanLabel=(a,b)=>{
+  const f=ds=>{const[y,m,d]=ds.split('-').map(Number);return `${y}/${m}/${d}`;};
+  return a===b?f(a):`${f(a)} 〜 ${f(b)}`;
+};
+
+function renderRlLog(){
+  const tb=document.getElementById('rlLogBody'); tb.innerHTML='';
+  const log=data.rlLog||[];
+  if(log.length===0){
+    tb.innerHTML='<tr><td colspan="6" class="muted">まだ履歴はありません。'
+      +'代役ルーレットで「この結果を反映する」を押すと、ここに残ります。</td></tr>';
+    return;
+  }
+  log.forEach((e,i)=>{
+    const days=(e.days||[]);
+    const detail=days.map(d=>`${dsLabel(d.d)}　${esc(d.f)} → <b>${esc(d.t)}</b>`).join('<br>');
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="at">${atLabel(e.at)}</td>`
+      +`<td class="at">${spanLabel(e.from,e.to)}</td>`
+      +`<td>${esc(e.who||'')}</td>`
+      +`<td class="rsn">${e.reason?esc(e.reason):'<span class="muted">—</span>'}</td>`
+      +`<td><details><summary>${days.length}日分</summary><div>${detail}</div></details></td>`
+      +`<td style="width:1%"><button class="del" title="この履歴を消す">×</button></td>`;
+    tr.querySelector('.del').onclick=()=>delRlLog(e.at);
+    tb.appendChild(tr);
+  });
+}
+
+/* ほかの端末の更新で並び順が変わっても取り違えないよう、日時で探して消します */
+function delRlLog(at){
+  const i=(data.rlLog||[]).findIndex(x=>x.at===at);
+  if(i<0){ renderRlLog(); return; }
+  if(!confirm(`${atLabel(at)} の履歴を消します。\n（当番表そのものは変わりません）`))return;
+  data.rlLog.splice(i,1);
+  saveData(); renderRlLog();
+}
+function clearRlLog(){
+  if(!(data.rlLog||[]).length)return;
+  if(!confirm(`代役ルーレットの履歴${data.rlLog.length}件をすべて消します。\n（当番表そのものは変わりません。元には戻せません）`))return;
+  data.rlLog=[];
+  saveData(); renderRlLog();
 }
 
 /* ================= オンコール表 =================
@@ -1755,7 +1866,7 @@ function closeModal(){ document.getElementById('ovl').classList.remove('show'); 
 function renderAll(){ renderPeople(); renderSchedule(); renderOncall(); renderRules(); }
 Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleActive,toggleOncall,addIcRow,
   onFyChange,onStartChange,generate,clearSchedule,openModal,bulkApply,saveModal,closeModal,
-  renderRoulette,spinRoulette,applyRoulette,
+  renderRoulette,spinRoulette,applyRoulette,clearRlLog,
   onOcFyChange,openOcModal,closeOcModal,saveOcModal,ocAutoAssign,ocFill,ocClear,
   ocRenderMsg,ocToChanged,ocCopyMsg,reloadNoop:()=>{}});
 
