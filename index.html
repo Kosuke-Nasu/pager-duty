@@ -93,14 +93,14 @@
   .cal .hn{display:block;font-size:10.5px;color:var(--danger)}
   .cal .none{color:#b6c3d2;font-weight:400}
   .cal .out{margin-top:2px;font-size:10px;color:var(--danger)}
-  #ovl,#ovlO{position:fixed;inset:0;background:rgba(14,58,107,.45);display:none;align-items:flex-start;justify-content:center;
+  #ovl,#ovlO,#ovlD{position:fixed;inset:0;background:rgba(14,58,107,.45);display:none;align-items:flex-start;justify-content:center;
     padding:40px 12px;z-index:50;overflow:auto}
-  #ovl.show,#ovlO.show{display:flex}
-  #modal,#modalO{background:#fff;border-radius:10px;max-width:480px;width:100%;padding:18px}
-  #modal h3,#modalO h3{font-size:15px;color:var(--navy);margin-bottom:10px}
-  #modal .line,#modalO .line{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:14px}
-  #modal .line .dt,#modalO .line .dt{width:110px;color:var(--sub);font-size:13px}
-  #modal select,#modalO select{flex:1}
+  #ovl.show,#ovlO.show,#ovlD.show{display:flex}
+  #modal,#modalO,#modalD{background:#fff;border-radius:10px;max-width:480px;width:100%;padding:18px}
+  #modal h3,#modalO h3,#modalD h3{font-size:15px;color:var(--navy);margin-bottom:10px}
+  #modal .line,#modalO .line,#modalD .line{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:14px}
+  #modal .line .dt,#modalO .line .dt,#modalD .line .dt{width:110px;color:var(--sub);font-size:13px}
+  #modal select,#modalO select,#modalD select{flex:1}
   .pinlb{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--sub);
     white-space:nowrap;cursor:pointer;user-select:none}
   .icrow{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap}
@@ -176,7 +176,7 @@
   @media print{
     @page{size:A4 portrait;margin:12mm}
     html,body{background:#fff}
-    header,#setupBanner,.tabs,#ovl,#ovlO,.noprint{display:none!important}
+    header,#setupBanner,.tabs,#ovl,#ovlO,#ovlD,.noprint{display:none!important}
     main{max-width:none;margin:0;padding:0}
     #pageM,#pageR,#pageO,#pageF{display:none!important}
     #pageS{display:block!important}
@@ -381,7 +381,7 @@
   </div>
 
   <div class="card">
-    <h2>月表示（日付をタップするとその月の担当を変更できます）</h2>
+    <h2>月表示（日付をタップすると、その日だけ担当を変更できます）</h2>
     <div class="months" id="ocMonthBtns"></div>
     <div class="cal" id="ocCal"></div>
   </div>
@@ -675,31 +675,49 @@
           残りの人は、固定された曜日を飛ばして、残りの曜日の中で順に後ろへずれます（例：水曜を固定した場合、火曜の人は木曜へ）。</li>
       <li>ずらした先が<b>外勤日に当たる人は、さらにもうひとつ後ろの曜日</b>へ飛ばします（例：水曜の人は、木曜が外勤日なら金曜へ）。
           飛ばした先にいた人（押し出された人）は、空いた曜日に入ります。それも外勤日で入れない場合は、全体のずれが最小になる組み合わせを選びます。</li>
-      <li>「基準にする月」を選んで<b>「基準月より後を自動で埋める」</b>を押すと、その月の担当をもとに年度末（3月）まで上のルールで自動作成します。基準月の担当は、月表示の日付タップか年間一覧の「編集」から手動で入力・調整できます。</li>
+      <li>「基準にする月」を選んで<b>「基準月より後を自動で埋める」</b>を押すと、その月の担当をもとに年度末（3月）まで上のルールで自動作成します。基準月の担当は、年間一覧の<b>「編集」</b>（または月表示で日付をタップ →「この月の曜日担当を編集」）から手動で入力・調整できます。</li>
+      <li><b>その日だけ担当を変える</b>ときは、月表示でその日付をタップして担当を選び直します（→ §12）。月×曜日の担当は変わりません。</li>
       <li>自動作成は<b>そのとき登録されている外勤日</b>で計算します。外勤日を変えたり、メンバーが入れ替わったりした場合は、変わった月の担当を手動で直し、その月を基準にして自動作成をやり直してください。</li>
       <li>手動調整（モーダル）では外勤日の人も選べますが、選択肢とカレンダー・年間一覧に「外勤日」の注記が出ます。</li>
       <li>医局秘書への連絡用メッセージを自動で作成できます（宛名と月を選んで「メッセージをコピー」）。担当が「未定」の曜日は「未定」と入るので、送る前に埋めてください。</li>
     </ul>
 
-    <h3>12. 代役ルーレット（オンコール）</h3>
+    <h3>12. その日だけ担当を変える（オンコール・手動）</h3>
+    <p>オンコールは「月×曜日」で担当を決めているため、そのままでは月の途中の1日だけを変えられません。
+      <b>月表示でその日付をタップ</b>すると、<b>その日だけ</b>担当を差し替えられます。</p>
+    <ul>
+      <li>例）8月の水曜が木村でも、<b>8/12（水）だけ</b>山田にできます。8/5・8/19・8/26 は木村のままです。</li>
+      <li>選択肢は<b>メンバー登録で「オンコール」にチェックのある人</b>です。外勤日の人も選べますが、選択肢に「外勤日」の注記が出ます。</li>
+      <li><b>もとに戻す</b>ときは、同じ画面で先頭の<b>「もとの担当のまま（◯◯）」</b>を選んで保存します。
+          月の編集画面の下にある「この月の『その日だけの担当』」の<b>「解除」</b>でも戻せます。</li>
+      <li>差し替えた日は、月表示に<b>「代」</b>のマーク、年間一覧に<b>「12日は山田」</b>の注記が付き、
+          医局秘書への連絡メッセージにも反映されます。</li>
+      <li><b>その月を丸ごと代えたいとき</b>は、この画面の<b>「この月の曜日担当を編集」</b>（または年間一覧の「編集」）から変更してください。</li>
+      <li>この変更は代役ルーレット（§13）と同じ仕組みで持っているため、<b>「基準月より後を自動で埋める」を押しても消えません</b>。
+          いっぽう<b>「この年度のオンコールをすべて削除」ではいっしょに消えます</b>。</li>
+      <li>手動の変更は<b>履歴には残りません</b>（履歴に残したい場合は代役ルーレットをお使いください）。</li>
+    </ul>
+
+    <h3>13. 代役ルーレット（オンコール）</h3>
     <p>オンコール担当が休むときの代役をランダムに選ぶ機能です（オンコールタブ）。使い方は日中ピッチの §9 と同じですが、
       オンコールは「月×曜日」で担当を決めているため、<b>差し替わるのは指定した期間のその日だけ</b>です。</p>
     <ul>
       <li>例）8月の水曜が木村でも、<b>8/12（水）だけ</b>山田に差し替えられます。8/5・8/19・8/26 は木村のままです。</li>
-      <li>月×曜日の担当そのものは変わりません。<b>その月を丸ごと代えたいときは</b>、月表示の日付タップ（または年間一覧の「編集」）から担当を変えてください。</li>
+      <li>月×曜日の担当そのものは変わりません。<b>その月を丸ごと代えたいときは</b>、年間一覧の「編集」（または月表示の日付タップ →「この月の曜日担当を編集」）から担当を変えてください。</li>
       <li>次の人はその日の候補から<b>自動的に外れます</b>…その日の担当者本人／その曜日が外勤日の人／メンバー登録で「オンコール」のチェックが無い人。
           <b>感染制御部・細菌検査室ローテ中の人は候補に入ります</b>（オンコールはローテ中でも担当できるため。日中ピッチとの違いです）。</li>
       <li>土日・祝日は対象から外れます。</li>
       <li>入れた代役は、月表示に<b>「代」</b>のマーク、年間一覧に<b>「12日は山田」</b>の注記、
           医局秘書への連絡メッセージに<b>「ただし、12日（水）は山田（木村の代役）となります。」</b>として反映されます。</li>
-      <li><b>解除のしかた</b>…月表示でその月の日付をタップし、編集画面の下にある「この月の『その日だけの代役』」から<b>「解除」</b>。もとの曜日担当に戻ります。</li>
+      <li><b>解除のしかた</b>…月表示でその日付をタップして「もとの担当のまま（◯◯）」を選んで保存（→ §12）。
+          月の編集画面の下にある「この月の『その日だけの担当』」の<b>「解除」</b>でも戻せます。</li>
       <li><b>「基準月より後を自動で埋める」を押しても、入れた代役は消えません</b>（曜日担当とは別に持っているため）。
           不要になった代役は上の手順で解除してください。いっぽう<b>「この年度のオンコールをすべて削除」では代役もいっしょに消えます</b>。</li>
       <li>反映すると、日中ピッチと同じように<b>使用日時・対象期間・休む人・要件・交代の内訳</b>がオンコールタブの
           <b>「代役ルーレットの履歴」</b>に残ります（日中ピッチの履歴とは別々です）。</li>
     </ul>
 
-    <h3>13. データの取り扱い</h3>
+    <h3>14. データの取り扱い</h3>
     <div class="warn">
       このアプリのデータはFirebase（インターネット上のデータ保存サービス）に保存され、
       <b>このページのURLを知っている人は誰でも同じ内容を見て編集できます</b>。ログインはありません。<br>
@@ -742,6 +760,25 @@
   </div>
 </div>
 
+<!-- ============ オンコール「その日だけ」調整モーダル ============ -->
+<div id="ovlD" onclick="if(event.target===this)closeOcDayModal()">
+  <div id="modalD">
+    <h3 id="dTitle"></h3>
+    <p class="muted" id="dBase" style="margin-bottom:10px"></p>
+    <div class="line">
+      <span class="dt">この日の担当</span>
+      <select id="dSel"></select>
+    </div>
+    <div class="row" style="margin-top:14px;margin-bottom:0">
+      <div style="flex:0"><button class="btn p" onclick="saveOcDayModal()">この日だけ変更する</button></div>
+      <div style="flex:0"><button class="btn g" onclick="closeOcDayModal()">閉じる</button></div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--blue-line);margin:12px 0">
+    <div class="muted" style="margin-bottom:7px">この月の担当をまとめて変えたいときは、こちらから。</div>
+    <button class="btn g sm" onclick="openOcMonthFromDay()">この月の曜日担当を編集</button>
+  </div>
+</div>
+
 <script type="module">
 /* ==========================================================
    ★★★ ここにFirebaseの設定値を貼り付けてください ★★★
@@ -772,8 +809,9 @@ const FIREBASE_CONFIG = {
    ics = 感染制御部ローテの期間(複数可)。旧形式の ic1/ic2 は読み込み時に変換します。
    genStart = 年度ごとの「作成を始める月」。年度の途中から始める場合に使い、
               それより前の月は自動作成の対象外・担当日数の集計対象外になります。
-   ocEx   = オンコールの「その日だけの代役」。オンコール本体は月×曜日で1人なので、
-            1日だけの交代はこの例外に入れ、表示のときに優先します（ocOn を参照）。
+   ocEx   = オンコールの「その日だけの担当」。オンコール本体は月×曜日で1人なので、
+            1日だけの交代（代役ルーレット・月表示から日付をタップしての手動変更）は
+            この例外に入れ、表示のときに優先します（ocOn を参照）。
    rlLog / ocLog = 代役ルーレットを反映したときの履歴（新しいものが先頭）。
             rlLog=日中ピッチ、ocLog=オンコール。
             at=反映した日時(ミリ秒), from/to=指定した期間, who=休む人, reason=要件,
@@ -833,7 +871,8 @@ async function initStore(){
     if(remote&&remote!==lastSavedJson){
       data=migrate(JSON.parse(remote)); lastSavedJson=remote;
       if(!document.getElementById('ovl').classList.contains('show')
-        &&!document.getElementById('ovlO').classList.contains('show')) renderAll();
+        &&!document.getElementById('ovlO').classList.contains('show')
+        &&!document.getElementById('ovlD').classList.contains('show')) renderAll();
       setSync('更新を反映 '+new Date().toLocaleTimeString('ja-JP'));
     }
   });
@@ -1631,15 +1670,15 @@ function ocSet(fy,y,m,v){
   data.oncall[fy][ocKeyOf(y,m)]=v;
 }
 function ocHasAny(fy,y,m){ const a=ocGet(fy,y,m); return [1,2,3,4,5].some(w=>a[w]); }
-/* その日のオンコール担当。代役ルーレットで入れた「その日だけの代役」があればそちらが優先。
-   オンコール本体は月×曜日で1人なので、1日だけの交代は data.ocEx に持ちます。 */
+/* その日のオンコール担当。「その日だけの担当」（代役ルーレット・月表示からの手動変更）が
+   あればそちらが優先。オンコール本体は月×曜日で1人なので、1日だけの交代は data.ocEx に持ちます。 */
 const ocExOn=ds=>(data.ocEx||{})[ds]||'';
 function ocOn(ds){
   const ex=ocExOn(ds); if(ex)return ex;
   const [y,m]=ds.split('-').map(Number);
   return ocGet(fyOf(ds),y,m)[wdayOf(ds)]||'';
 }
-/* その月にある「その日だけの代役」を日付順で返す */
+/* その月にある「その日だけの担当」を日付順で返す */
 function ocExOfMonth(y,m){
   const pre=`${y}-${pad(m)}-`;
   return Object.keys(data.ocEx||{}).filter(ds=>ds.startsWith(pre)&&data.ocEx[ds]).sort();
@@ -1699,7 +1738,7 @@ function renderOcCal(){
       }
       else inner+=`<div class="name none">未定</div>`;
       if(pins.includes(wd))inner+=`<div class="muted" style="font-size:10px">固定</div>`;
-      c.onclick=()=>openOcModal(y,m);
+      c.onclick=()=>openOcDayModal(ds);
     }
     c.innerHTML=inner; cal.appendChild(c);
   }
@@ -1747,8 +1786,8 @@ function renderOcBaseSel(){
 function renderOcMsgSel(){ ocFillMonthSel('ocMsgSel', ocKeyOf(ocMonth.y,ocMonth.m)); }
 
 /* ---- 手動調整（月×曜日のモーダル） ---- */
-function ocOptionHtml(sel,wd){
-  let h='<option value="">（未定）</option>';
+function ocOptionHtml(sel,wd,emptyLabel){
+  let h=`<option value="">${emptyLabel||'（未定）'}</option>`;
   data.people.forEach(p=>{
     if(!p.oncall&&p.id!==sel)return;   // 対象外の人は、すでに割り当て済みの場合だけ表示する
     const flags=[];
@@ -1772,13 +1811,13 @@ function openOcModal(y,m){
   renderOcExLines(y,m);
   document.getElementById('ovlO').classList.add('show');
 }
-/* 代役ルーレットで入れた「その日だけの代役」の一覧。ここから1件ずつ解除できます。 */
+/* 代役ルーレット・月表示からの手動変更で入れた「その日だけの担当」の一覧。ここから1件ずつ解除できます。 */
 function renderOcExLines(y,m){
   const box=document.getElementById('oExLines');
   const days=ocExOfMonth(y,m);
   if(days.length===0){ box.innerHTML=''; return; }
   box.innerHTML='<hr style="border:none;border-top:1px solid var(--blue-line);margin:10px 0">'
-    +'<div class="f" style="margin-bottom:6px">この月の「その日だけの代役」</div>';
+    +'<div class="f" style="margin-bottom:6px">この月の「その日だけの担当」</div>';
   days.forEach(ds=>{
     const base=ocGet(curFy,y,m)[wdayOf(ds)];
     const line=document.createElement('div'); line.className='line';
@@ -1789,15 +1828,54 @@ function renderOcExLines(y,m){
     box.appendChild(line);
   });
 }
-/* 代役を解除して、もとの月×曜日の担当に戻す */
+/* その日だけの担当を解除して、もとの月×曜日の担当に戻す */
 function ocDelEx(ds){
-  if(!confirm(`${dsLabel(ds)} の代役（${pName(data.ocEx[ds])}）を解除して、`
+  if(!confirm(`${dsLabel(ds)} の担当（${pName(data.ocEx[ds])}）を解除して、`
     +`もとの${WD[wdayOf(ds)]}曜日の担当に戻します。\n（履歴は残ります）`))return;
   delete data.ocEx[ds];
   saveData();
   if(ocCtx)renderOcExLines(ocCtx.y,ocCtx.m);
   renderOncall();
 }
+
+/* ---- 手動調整（1日だけ）：月表示で日付をタップしたときの画面 ----
+   その日だけを data.ocEx で上書きします。月×曜日の担当そのものは変えません。
+   もとの曜日担当と同じ人を選ぶと、上書きを消して通常の状態に戻します。 */
+let ocDayCtx=null;
+function ocDayBase(ds){
+  const [y,m]=ds.split('-').map(Number);
+  return ocGet(fyOf(ds),y,m)[wdayOf(ds)]||'';
+}
+function openOcDayModal(ds){
+  ocDayCtx=ds;
+  const wd=wdayOf(ds), [y,m]=ds.split('-').map(Number);
+  const base=ocDayBase(ds), ex=ocExOn(ds);
+  document.getElementById('dTitle').textContent=`${y}年${m}月${+ds.slice(8)}日（${WD[wd]}）のオンコール担当`;
+  document.getElementById('dBase').innerHTML=base
+    ? `${m}月の${WD[wd]}曜日の担当は<b>${esc(pName(base))}</b>です。`
+      +(ex&&ex!==base?`（この日は<b>${esc(pName(ex))}</b>に変更済み）`:'')
+    : `${m}月の${WD[wd]}曜日の担当は決まっていません。`;
+  // 先頭の選択肢は「上書きをしない（もとの曜日担当のまま）」を意味します
+  const keep=base?`もとの担当のまま（${pName(base)}）`:'（未定のまま）';
+  document.getElementById('dSel').innerHTML=ocOptionHtml(ex||'',wd,keep);
+  document.getElementById('ovlD').classList.add('show');
+}
+function saveOcDayModal(){
+  if(!ocDayCtx)return;
+  const ds=ocDayCtx, v=document.getElementById('dSel').value, base=ocDayBase(ds);
+  if(!data.ocEx)data.ocEx={};
+  if(!v||v===base) delete data.ocEx[ds];   // もとの曜日担当に戻す
+  else data.ocEx[ds]=v;
+  saveData(); closeOcDayModal(); renderOncall();
+}
+/* この画面から、月×曜日をまとめて編集する画面へ */
+function openOcMonthFromDay(){
+  if(!ocDayCtx)return;
+  const [y,m]=ocDayCtx.split('-').map(Number);
+  closeOcDayModal(); openOcModal(y,m);
+}
+function closeOcDayModal(){ document.getElementById('ovlD').classList.remove('show'); ocDayCtx=null; }
+
 /* モーダル内のランダム割り当て。5人以上なら一人1曜日、4人以下なら一人2曜日まで。
    外勤日の曜日には割り当てない。「固定」にチェックした曜日はいまの担当のまま動かさない。
    できるだけ多くの曜日を埋め、人が偏らない組み合わせを選ぶ。 */
@@ -1916,12 +1994,12 @@ function ocFill(){
   }
   if(bi===months.length-1){ alert('基準月が年度の最後の月（3月）のため、埋める月がありません。'); return; }
   const rest=months.slice(bi+1);
-  // 「その日だけの代役」は月×曜日とは別に持っているので、自動作成では消えません
+  // 「その日だけの担当」は月×曜日とは別に持っているので、自動作成では消えません
   const exN=rest.reduce((s,{y,m})=>s+ocExOfMonth(y,m).length,0);
   if(rest.some(({y,m})=>ocHasAny(curFy,y,m))||exN){
     if(!confirm(`${by}年${bm}月より後の月の担当は上書きされます。`
-      +(exN?`\n\n※代役ルーレットで入れた「その日だけの代役」${exN}件はそのまま残ります。`
-           +`\n　不要なら、月表示の日付をタップして「解除」してください。`:'')
+      +(exN?`\n\n※「その日だけの担当」${exN}件はそのまま残ります。`
+           +`\n　不要なら、月表示の日付をタップして戻してください。`:'')
       +`\nよろしいですか？`))return;
   }
   let blanks=0;
@@ -1940,7 +2018,7 @@ function ocClear(){
   const exDays=fyMonths(curFy).flatMap(({y,m})=>ocExOfMonth(y,m));
   if(n===0&&exDays.length===0){ alert(`${curFy}年度には、まだオンコールの割り当てがありません。`); return; }
   if(!confirm(`${curFy}年度のオンコール当番をすべて削除して、空の状態に戻します。`
-    +(exDays.length?`\n代役ルーレットで入れた「その日だけの代役」${exDays.length}件もいっしょに消えます（履歴は残ります）。`:'')
+    +(exDays.length?`\n「その日だけの担当」${exDays.length}件もいっしょに消えます（履歴は残ります）。`:'')
     +`\n元には戻せません。\nピッチ当番表とメンバー登録はそのまま残ります。\n\nよろしいですか？`))return;
   delete data.oncall[curFy];
   exDays.forEach(ds=>{ delete data.ocEx[ds]; });
@@ -2163,6 +2241,7 @@ Object.assign(window,{showTab,savePerson,cancelEdit,editPerson,delPerson,toggleA
   renderRoulette,spinRoulette,applyRoulette,clearLog,
   renderOcRoulette,spinOcRoulette,applyOcRoulette,
   onOcFyChange,openOcModal,closeOcModal,saveOcModal,ocAutoAssign,ocFill,ocClear,
+  openOcDayModal,saveOcDayModal,closeOcDayModal,openOcMonthFromDay,
   ocRenderMsg,ocToChanged,ocCopyMsg,reloadNoop:()=>{}});
 
 (async function init(){
