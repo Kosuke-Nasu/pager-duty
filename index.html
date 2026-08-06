@@ -1230,7 +1230,9 @@ function savePerson(){
     const p=data.people.find(x=>x.id===editId);
     Object.assign(p,{name,gaikin,ics,lab1,lab2});
   }else{
-    data.people.push({id:uid(),name,gaikin,ics,lab1,lab2,active:true});
+    // oncall も入れておく。省くと登録直後だけチェックが外れ、読み込み直したときに
+    // migrate が active と同じ値を入れるため、勝手にチェックが付いたように見えてしまう。
+    data.people.push({id:uid(),name,gaikin,ics,lab1,lab2,active:true,oncall:true});
   }
   cancelEdit(); saveData(); renderPeople();
 }
